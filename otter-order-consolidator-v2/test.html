@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Extension Syntax Test</title>
+</head>
+<body>
+    <h1>Testing Extension Files</h1>
+    <div id="results"></div>
+    
+    <script>
+        const files = [
+            'utils/storage.js',
+            'components/itemMatcher.js', 
+            'components/orderBatcher.js',
+            'components/categoryManager.js',
+            'components/waveManager.js',
+            'content/networkMonitor.js',
+            'content/orderExtractor.js',
+            'content/overlay.js',
+            'content/content.js'
+        ];
+        
+        const results = document.getElementById('results');
+        
+        files.forEach(file => {
+            const script = document.createElement('script');
+            script.src = file;
+            script.onerror = () => {
+                const div = document.createElement('div');
+                div.style.color = 'red';
+                div.textContent = `❌ ${file} - Failed to load`;
+                results.appendChild(div);
+            };
+            script.onload = () => {
+                const div = document.createElement('div');
+                div.style.color = 'green';
+                div.textContent = `✅ ${file} - Loaded successfully`;
+                results.appendChild(div);
+            };
+            document.head.appendChild(script);
+        });
+    </script>
+</body>
+</html>

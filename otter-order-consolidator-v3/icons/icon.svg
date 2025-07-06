@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#2E8B57" rx="16"/>
+  <text x="64" y="80" font-family="Arial, sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="white">O</text>
+  <text x="64" y="110" font-family="Arial, sans-serif" font-size="20" text-anchor="middle" fill="white">v3</text>
+</svg>

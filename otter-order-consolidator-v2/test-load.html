@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Otter Extension Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        code {
+            background: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Otter Extension Load Test</h1>
+        
+        <div class="instructions">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Open Chrome DevTools (F12)</li>
+                <li>Go to the Console tab</li>
+                <li>Look for: <code>🔴 OTTER EXTENSION LOADED AT:</code></li>
+                <li>Check for any error messages</li>
+                <li>Look for the red flash and "OTTER EXT LOADED" badge</li>
+                <li>Press <code>Ctrl+Shift+D</code> to toggle debug panel</li>
+            </ol>
+        </div>
+
+        <h2>Extension Status Checklist:</h2>
+        <div id="status-list">
+            <div class="status info">Checking extension load status...</div>
+        </div>
+
+        <h2>Quick Actions:</h2>
+        <button onclick="checkExtension()">Check Extension Status</button>
+        <button onclick="window.location.reload()">Reload Page</button>
+        <button onclick="clearCache()">Clear Extension Cache</button>
+
+        <h2>Console Output:</h2>
+        <div id="console-output" style="background: #000; color: #0f0; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; min-height: 100px; max-height: 300px; overflow-y: auto;">
+            Waiting for console output...
+        </div>
+    </div>
+
+    <script>
+        let consoleOutput = [];
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        // Intercept console messages
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToConsole('log', args);
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToConsole('error', args);
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addToConsole('warn', args);
+        };
+
+        function addToConsole(type, args) {
+            const message = args.map(arg => {
+                if (typeof arg === 'object') {
+                    return JSON.stringify(arg, null, 2);
+                }
+                return String(arg);
+            }).join(' ');
+
+            const output = document.getElementById('console-output');
+            const line = document.createElement('div');
+            line.style.color = type === 'error' ? '#f00' : type === 'warn' ? '#ff0' : '#0f0';
+            line.textContent = `[${type.toUpperCase()}] ${message}`;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function checkExtension() {
+            const statusList = document.getElementById('status-list');
+            statusList.innerHTML = '';
+
+            // Check for visual indicators
+            const checks = [
+                {
+                    name: 'Debug Panel Created',
+                    check: () => document.getElementById('otter-debug-panel') !== null
+                },
+                {
+                    name: 'Toggle Button Created',
+                    check: () => document.querySelector('.otter-floating-toggle') !== null
+                },
+                {
+                    name: 'Mode Toggle Created',
+                    check: () => document.querySelector('.otter-mode-toggle') !== null
+                },
+                {
+                    name: 'Overlay Created',
+                    check: () => document.getElementById('otter-consolidator-overlay') !== null
+                },
+                {
+                    name: 'Extension Loaded Message',
+                    check: () => {
+                        const found = consoleOutput.some(msg => msg.includes('OTTER EXTENSION LOADED'));
+                        return found;
+                    }
+                }
+            ];
+
+            checks.forEach(check => {
+                const status = document.createElement('div');
+                const passed = check.check();
+                status.className = `status ${passed ? 'success' : 'error'}`;
+                status.textContent = `${passed ? '✓' : '✗'} ${check.name}`;
+                statusList.appendChild(status);
+            });
+        }
+
+        function clearCache() {
+            if (chrome && chrome.runtime && chrome.runtime.reload) {
+                chrome.runtime.reload();
+                alert('Extension reloaded! Please refresh this page.');
+            } else {
+                alert('Please reload the extension manually from chrome://extensions');
+            }
+        }
+
+        // Auto-check after page load
+        window.addEventListener('load', () => {
+            setTimeout(checkExtension, 2000);
+        });
+
+        // Monitor for extension load
+        const observer = new MutationObserver(() => {
+            if (document.body.style.backgroundColor === 'red') {
+                addToConsole('log', 'Red flash detected - extension is loading!');
+            }
+        });
+        observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+    </script>
+</body>
+</html>

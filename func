@@ -1,0 +1,92 @@
+(function extractReactData() {
+    console.log('=== EXTRACTING REACT ORDER DATA ===');
+
+    const orderRows = document.querySelectorAll('[data-testid="order-row"]');
+    console.log(`Found ${orderRows.length} orders`);
+
+    const orders = [];
+
+    orderRows.forEach((row, index) => {
+      console.log(`\n--- Extracting Order ${index + 1} ---`);
+
+      // Find React fiber
+      const reactKeys = Object.keys(row).filter(k => k.startsWith('__react'));        
+      if (reactKeys.length === 0) {
+        console.log('No React data found');
+        return;
+      }
+
+      try {
+        const fiber = row[reactKeys[0]];
+        let current = fiber;
+        let depth = 0;
+        let orderData = null;
+
+        // Navigate up the fiber tree to find the order data
+        while (current && depth < 10) {
+          if (current.memoizedProps && current.memoizedProps.order) {
+            orderData = current.memoizedProps.order;
+            console.log(`Found order data at depth ${depth}!`);
+            break;
+          }
+          current = current.return;
+          depth++;
+        }
+
+        if (orderData) {
+          console.log('Order object:', orderData);
+
+          // Extract key information
+          console.log('Order ID:', orderData.id || orderData.orderId);
+          console.log('Order Number:', orderData.orderNumber ||
+  orderData.displayId);
+          console.log('Customer:', orderData.customerName ||
+  orderData.customer?.name);
+
+          // Look for items
+          if (orderData.items || orderData.orderItems || orderData.lineItems) {       
+            const items = orderData.items || orderData.orderItems ||
+  orderData.lineItems;
+            console.log(`Items (${items.length}):`);
+
+            items.forEach((item, i) => {
+              console.log(`  Item ${i + 1}:`);
+              console.log('    Name:', item.name || item.itemName || item.title);     
+              console.log('    Quantity:', item.quantity || item.qty || 1);
+              console.log('    Size:', item.size || item.variant || item.option       
+  || 'Not found');
+
+              // Check for modifiers/options that might contain size
+              if (item.modifiers || item.options || item.variants) {
+                console.log('    Modifiers/Options:', item.modifiers ||
+  item.options || item.variants);
+              }
+
+              // Check all properties for size-related fields
+              Object.keys(item).forEach(key => {
+                if (key.toLowerCase().includes('size') ||
+                    key.toLowerCase().includes('variant') ||
+                    key.toLowerCase().includes('option')) {
+                  console.log(`    ${key}:`, item[key]);
+                }
+              });
+            });
+          }
+
+          // Store for later use
+          orders.push(orderData);
+        }
+      } catch (e) {
+        console.log('Error extracting React data:', e.message);
+      }
+    });
+
+    // Make orders available globally for further inspection
+    window._extractedOrders = orders;
+    console.log('\n=== Extraction complete ===');
+    console.log('Orders stored in window._extractedOrders');
+    console.log('Type: window._extractedOrders[0] to inspect the first order');       
+
+    return orders;
+  })();
+
