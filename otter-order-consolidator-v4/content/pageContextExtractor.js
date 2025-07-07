@@ -137,6 +137,40 @@
           }
           console.log('Restaurant:', restaurantName);
           
+          // Extract order status/state
+          let orderStatus = 'UNKNOWN';
+          if (co.state) {
+            orderStatus = co.state;
+          } else if (co.status) {
+            orderStatus = co.status;
+          } else if (co.orderState) {
+            orderStatus = co.orderState;
+          } else if (co.order && co.order.state) {
+            orderStatus = co.order.state;
+          } else if (orderData.state) {
+            orderStatus = orderData.state;
+          } else if (orderData.status) {
+            orderStatus = orderData.status;
+          }
+          console.log('Order Status:', orderStatus);
+          
+          // Extract orderedAt timestamp
+          let orderedAt = null;
+          if (co.orderedAt) {
+            orderedAt = co.orderedAt;
+          } else if (co.createdAt) {
+            orderedAt = co.createdAt;
+          } else if (co.timestamp) {
+            orderedAt = co.timestamp;
+          } else if (co.orderDate) {
+            orderedAt = co.orderDate;
+          } else if (orderData.orderedAt) {
+            orderedAt = orderData.orderedAt;
+          } else if (orderData.createdAt) {
+            orderedAt = orderData.createdAt;
+          }
+          console.log('Ordered At:', orderedAt);
+          
           // Extract customer name from customer.displayName
           let customerName = 'Unknown';
           if (co.customer && co.customer.displayName) {
@@ -587,6 +621,8 @@
             orderNotes: orderNotes,
             recipientName: recipientName || customerName, // Use recipient name if found, otherwise customer name
             restaurantName: restaurantName,
+            orderStatus: orderStatus,
+            orderedAt: orderedAt,
             source: hasCustomerOrder ? 'react-customerOrder' : 'react-simple'
           };
           
