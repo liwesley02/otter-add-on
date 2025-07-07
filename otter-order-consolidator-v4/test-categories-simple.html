@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Size-First Categorization</title>
+</head>
+<body>
+    <h1>Test Size-First Categorization</h1>
+    <div id="results"></div>
+    
+    <script src="components/categoryManager.js"></script>
+    <script>
+        console.log('=== Testing Size-First Categorization ===');
+        
+        // Create a test instance of CategoryManager
+        const categoryManager = new CategoryManager();
+        
+        // Test items from the user
+        const testItems = [
+            { name: 'Bao Nut', size: 'no-size' },
+            { name: 'Grilled Steak Rice Bowl', size: 'small' },
+            { name: 'Grilled Orange Chicken Rice Bowl', size: 'small' },
+            { name: 'Crispy Chipotle Aioli Chicken Rice Bowl', size: 'large' },
+            { name: 'Crispy Sesame Aioli Shrimp Rice Bowl', size: 'medium' },
+            { name: 'Grilled Salmon Rice Bowl', size: 'large' },
+            { name: 'Crispy Orange Chicken Urban Bowl', size: 'urban' },
+            { name: 'Crispy Pork Dumplings', size: 'no-size' },
+            { name: 'Cucumber Lemon Soda', size: 'small' },
+            { name: 'Grilled Chicken Rice Bowl', size: 'large - fried rice substitute' },
+            { name: 'Crispy Garlic Aioli Chicken Rice Bowl', size: 'large - garlic butter fried rice substitute' },
+            { name: 'Crispy Sesame Aioli Chicken Urban Bowl', size: 'urban', modifiers: ['Garlic Butter Fried Rice', 'Pork Dumplings'] },
+            { name: 'Garlic Aioli Cauliflower Nugget Urban Bowl', size: 'urban', modifiers: ['Noodles', 'Vegetable Dumplings'] }
+        ];
+        
+        let output = '<h2>Categorization Results:</h2>';
+        
+        testItems.forEach(item => {
+            const categoryInfo = categoryManager.categorizeItem(item.name, item.size);
+            
+            output += `<div style="margin: 10px 0; padding: 10px; border: 1px solid #ccc;">`;
+            output += `<strong>Item:</strong> ${item.name}<br>`;
+            output += `<strong>Size:</strong> ${item.size}<br>`;
+            output += `<strong>Category:</strong> ${categoryInfo.displayCategory}<br>`;
+            output += `<strong>Top Category:</strong> ${categoryInfo.topCategory} (${categoryInfo.topCategoryName})<br>`;
+            output += `<strong>Sub Category:</strong> ${categoryInfo.subCategory} (${categoryInfo.subCategoryName})<br>`;
+            if (categoryInfo.sauce) {
+                output += `<strong>Sauce:</strong> ${categoryInfo.sauce}<br>`;
+            }
+            if (item.modifiers) {
+                output += `<strong>Modifiers:</strong> ${item.modifiers.join(', ')}<br>`;
+            }
+            output += `</div>`;
+        });
+        
+        // Test hierarchical grouping
+        const topGroups = {};
+        
+        testItems.forEach(item => {
+            const categoryInfo = categoryManager.categorizeItem(item.name, item.size);
+            if (!topGroups[categoryInfo.topCategoryName]) {
+                topGroups[categoryInfo.topCategoryName] = {};
+            }
+            if (!topGroups[categoryInfo.topCategoryName][categoryInfo.subCategoryName]) {
+                topGroups[categoryInfo.topCategoryName][categoryInfo.subCategoryName] = [];
+            }
+            topGroups[categoryInfo.topCategoryName][categoryInfo.subCategoryName].push({
+                name: item.name,
+                sauce: categoryInfo.sauce,
+                modifiers: item.modifiers
+            });
+        });
+        
+        // Display grouped results
+        output += '<h2>Hierarchical Grouping (All Top-Level Categories at Same Level):</h2>';
+        Object.entries(topGroups).forEach(([topName, subCategories]) => {
+            output += `<div style="margin: 10px 0; padding: 10px; background: #f0f0f0;">`;
+            output += `<h3>${topName}:</h3>`;
+            Object.entries(subCategories).forEach(([subName, items]) => {
+                output += `<div style="margin-left: 20px;">`;
+                output += `<strong>${subName}:</strong><ul>`;
+                items.forEach(item => {
+                    let display = item.sauce ? `${item.name} (${item.sauce})` : item.name;
+                    if (item.modifiers) {
+                        display += ` [${item.modifiers.join(', ')}]`;
+                    }
+                    output += `<li>${display}</li>`;
+                });
+                output += `</ul></div>`;
+            });
+            output += `</div>`;
+        });
+        
+        // Show all top categories available
+        output += '<h2>All Available Top Categories:</h2><ul>';
+        const allTopCategories = categoryManager.getTopCategories();
+        allTopCategories.forEach(cat => {
+            output += `<li>${cat.name} (key: ${cat.key}, order: ${cat.order})</li>`;
+        });
+        output += '</ul>';
+        
+        document.getElementById('results').innerHTML = output;
+    </script>
+</body>
+</html>

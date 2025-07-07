@@ -1,0 +1,539 @@
+/* label_styles.css - V2.8 - Avery 5163: Further logo size increase */
+
+/* --- Global Styles & Variables --- */
+:root {
+    --primary-color: #2563eb; /* Blue */
+    --secondary-color: #16a34a; /* Green */
+    --accent-color: #4f46e5; /* Indigo for highlights */
+    --light-gray: #f3f4f6;
+    --medium-gray: #d1d5db;
+    --dark-gray: #374151;
+    --text-color: #1f2937;
+    --card-bg: #ffffff;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Basic Page Structure --- */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--light-gray);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+.page-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--medium-gray);
+}
+
+.page-header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--dark-gray);
+    margin-bottom: 0.4rem;
+}
+
+.page-header p {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.main-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 25px;
+}
+
+.controls-column {
+    flex: 1;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.preview-column {
+    flex: 2;
+    min-width: 380px; 
+}
+
+/* --- Card Styles --- */
+.card {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: 15px;
+    border: 1px solid #e5e7eb;
+}
+
+.card-header {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-gray);
+    margin-top: 0;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.card-header .icon {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-color);
+}
+#selectedOrderName {
+    font-weight: 500;
+    color: var(--accent-color);
+}
+
+
+/* --- Item List in Controls --- */
+.item-list {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 8px;
+    background-color: #f9fafb;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 15px;
+}
+
+.item-list .placeholder-text {
+    color: #9ca3af;
+    font-style: italic;
+    text-align: center;
+    padding: 15px;
+    font-size: 0.85rem;
+}
+
+#orderItemsList > div {
+    padding: 8px 10px;
+    background-color: #fff;
+    border-radius: 6px;
+    border: 1px solid var(--medium-gray);
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+#orderItemsList > div span:first-child {
+    font-weight: 600;
+    color: var(--text-color);
+    display: block;
+    margin-bottom: 3px;
+}
+#orderItemsList > div .text-xs.text-purple-600 { /* Add-on tag */
+    background-color: #eef2ff;
+    color: #4338ca;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    margin-left: 4px;
+}
+#orderItemsList > div .text-xs.text-green-600 { /* Meal Part tag */
+    background-color: #f0fdf4; 
+    color: #15803d; 
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    margin-left: 4px;
+}
+#orderItemsList > div .text-xs.text-gray-600 { /* Size */
+    color: #4b5563;
+    font-style: italic;
+    font-size: 0.75rem;
+}
+#orderItemsList > div .text-xs.text-blue-600 { /* Notes */
+    color: #1e40af;
+    font-size: 0.75rem;
+    padding-left: 6px;
+    border-left: 2px solid #60a5fa;
+    margin-top: 3px;
+    display: block;
+}
+
+
+/* --- Action Buttons --- */
+.action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.button {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+    color: white;
+}
+.button .icon {
+    width: 14px;
+    height: 14px;
+}
+
+.button-primary {
+    background-color: var(--primary-color);
+}
+.button-primary:hover {
+    background-color: #1d4ed8;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.button-secondary {
+    background-color: var(--secondary-color);
+}
+.button-secondary:hover {
+    background-color: #15803d;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* --- Instructions Card --- */
+.instructions-card {
+    background-color: #eef2ff;
+    border: 1px solid #c7d2fe;
+}
+.instructions-card .card-header {
+    color: #3730a3;
+}
+.instructions-card .card-header .icon {
+    color: #3730a3;
+}
+.instructions-card ul {
+    list-style-position: inside;
+    padding-left: 0;
+    margin: 0;
+    font-size: 0.85rem;
+    color: #4338ca;
+}
+.instructions-card ul li {
+    margin-bottom: 6px;
+}
+.instructions-card ul li strong {
+    font-weight: 600;
+}
+
+/* --- Preview Area --- */
+.preview-header {
+    font-size: 1.3rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 12px;
+    color: var(--dark-gray);
+}
+.label-placeholder-message {
+    grid-column: span 2; 
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 30px 15px;
+    font-size: 0.85rem;
+}
+
+.label-count-message {
+    text-align: center;
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+/* --- Label Sheet and Item Styles for Avery 5163 (2" x 4") --- */
+.label-sheet-container {
+    width: 8.5in; 
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 10px; 
+    background-color: #e0e0e0; 
+    border-radius: var(--border-radius);
+    overflow-x: auto; 
+    border: 1px solid var(--medium-gray);
+}
+
+.label-sheet {
+    width: 8.5in;
+    height: 11in; 
+    padding-top: 0.5in;    
+    padding-bottom: 0.5in; 
+    padding-left: 0.1875in; 
+    padding-right: 0.1875in;
+    box-sizing: border-box;
+    border: 1px solid #cccccc; 
+    background-color: white;
+    display: grid;
+    grid-template-columns: 4in 4in; 
+    grid-template-rows: repeat(5, 2in);      
+    column-gap: 0.125in; 
+    row-gap: 0in;              
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    margin: 0 auto; 
+}
+
+.label-item {
+    width: 4in;  
+    height: 2in; 
+    box-sizing: border-box;
+    border: 1px dashed #ddd; 
+    overflow: hidden;
+    padding: 0.15in; 
+    display: flex;
+    flex-direction: row; 
+    align-items: center; 
+    justify-content: flex-start;
+    page-break-inside: avoid; 
+    font-family: 'Inter', Arial, Helvetica, sans-serif;
+    position: relative;
+    background: transparent;
+}
+.label-item:empty {
+    background-color: #f8f9fa; 
+    border: 1px dashed #e5e7eb;
+}
+
+.logo-container {
+    /* Optimized for Avery 8163 labels with restaurant logos */
+    width: 1.3in;
+    max-width: 1.3in;
+    height: 1.6in;
+    max-height: 1.6in;
+    margin-right: 0.15in; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.logo-container img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; 
+}
+
+.text-container {
+    flex: 1; 
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; 
+    justify-content: center; 
+    height: 100%; 
+    overflow: hidden; 
+    padding-right: 0.1in;
+    padding-left: 0.05in;
+}
+
+.text-container .item-name-prominent {
+    font-weight: 700;
+    font-size: 12pt;
+    margin-bottom: 0.05in;
+    text-align: left;
+    line-height: 1.2;
+    color: #000000;
+}
+
+.text-container .item-name {
+    font-weight: 600; 
+    font-size: 10pt; /* Slightly smaller to make room for customer name */
+    margin-bottom: 0.03in; 
+    text-align: left;
+    line-height: 1.15;
+    max-height: 0.30in; /* Adjusted for potentially less space */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; 
+    -webkit-box-orient: vertical;
+    color: #111827; 
+}
+
+.text-container .separator-line {
+    display: none; /* Removing since customer name now has underline */
+}
+
+.text-container .item-size-line {
+    font-size: 10pt;
+    font-weight: 400; 
+    text-align: left;
+    line-height: 1.2;
+    margin-bottom: 0.03in; 
+    white-space: nowrap; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #000000; 
+}
+
+.text-container .item-notes {
+    font-size: 9pt;
+    text-align: left;
+    line-height: 1.2; 
+    max-height: 0.5in;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3; 
+    -webkit-box-orient: vertical;
+    color: #000000;
+    margin-top: 0.03in;
+}
+
+.text-container .item-notes .note-line {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block; 
+    margin-bottom: 0.015in; 
+}
+
+.text-container .customer-name-note {
+    font-size: 9pt;
+    font-weight: 600;
+    text-align: left;
+    line-height: 1.2;
+    color: #000000;
+    margin-top: 0.05in;
+    padding-top: 0.03in;
+    border-top: 1px solid #ccc;
+}
+
+/* --- Print Specific Styles --- */
+@media print {
+    body {
+        margin: 0 !important; 
+        padding: 0 !important; 
+        background-color: white !important;
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact;
+    }
+
+    .no-print { display: none !important; }
+    .label-sheet-container { 
+        display: none !important;
+    }
+    .print-only-container-wrapper { 
+        display: block !important; 
+        margin: 0 !important; 
+        padding: 0 !important; 
+    }
+
+    .print-only-container-wrapper .label-sheet {
+        width: 8.5in !important;
+        height: 11in !important; 
+        margin: 0 auto !important; 
+        padding-top: 0.5in !important;
+        padding-left: 0.1875in !important;
+        padding-right: 0.1875in !important;
+        padding-bottom: 0.5in !important;
+        border: none !important; 
+        box-shadow: none !important; 
+        background-color: white !important;
+        page-break-before: auto; 
+        page-break-after: auto;  
+    }
+
+    .print-only-container-wrapper .label-sheet + .label-sheet {
+        page-break-before: always !important;
+    }
+    
+    .print-only-container-wrapper .label-item {
+        border: none !important; 
+        padding: 0.15in !important; 
+        color: black !important;
+        background-color: white !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+    .print-only-container-wrapper .label-item:empty {
+        background-color: white !important; 
+        border: none !important;
+    }
+
+    .print-only-container-wrapper .logo-container {
+        width: 1.3in !important;
+        max-width: 1.3in !important;
+        height: 1.6in !important;
+        max-height: 1.6in !important;
+        background: none !important; /* Remove background for print */
+        border: none !important; /* Remove border for print */
+        padding: 0 !important;
+    }
+
+    .print-only-container-wrapper .logo-container img {
+        display: block !important; 
+    }
+
+    .print-only-container-wrapper .text-container .item-name-prominent,
+    .print-only-container-wrapper .text-container .item-name,
+    .print-only-container-wrapper .text-container .item-size-line,
+    .print-only-container-wrapper .text-container .item-notes,
+    .print-only-container-wrapper .text-container .note-line,
+    .print-only-container-wrapper .text-container .customer-name-note {
+        color: black !important;
+    }
+    .print-only-container-wrapper .text-container .separator-line {
+       background-color: #333333 !important; 
+    }
+
+    @page {
+        margin: 0; 
+        size: 8.5in 11in;
+    }
+}
+
+/* --- Responsive Adjustments for UI (not print) --- */
+@media (max-width: 900px) { 
+    .preview-column {
+       min-width: auto; 
+    }
+    .label-sheet-container {
+        /* Adjustments for smaller screen previews if needed */
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        font-size: 13px;
+    }
+    .main-content {
+        flex-direction: column;
+    }
+    .controls-column, .preview-column {
+        flex: none;
+        width: 100%;
+    }
+    .action-buttons {
+        grid-template-columns: 1fr; 
+    }
+    .page-header h1 {
+        font-size: 1.6rem;
+    }
+    .preview-header {
+        font-size: 1.15rem;
+    }
+    .page-container {
+        padding: 10px;
+    }
+    .card {
+        padding: 12px;
+    }
+    .label-sheet {
+        /* Preview on very small screens might not be perfect */
+    }
+}

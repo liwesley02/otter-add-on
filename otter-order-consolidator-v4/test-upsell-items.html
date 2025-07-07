@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Upsell Items Extraction</title>
+</head>
+<body>
+    <h1>Test Upsell Items Extraction</h1>
+    <div id="results"></div>
+    
+    <script src="components/categoryManager.js"></script>
+    <script>
+        console.log('=== Testing Upsell Items Extraction ===');
+        
+        // Create a test instance of CategoryManager
+        const categoryManager = new CategoryManager();
+        
+        // Simulate order data with upsell items
+        const testOrder = {
+            items: [
+                {
+                    name: 'Crispy Chipotle Aioli Chicken Rice Bowl',
+                    size: 'large',
+                    quantity: 1,
+                    modifiers: {},
+                    isUpsellItem: false
+                },
+                {
+                    name: 'Chocolate Chip Cookie',
+                    size: 'no-size',
+                    quantity: 2,
+                    modifiers: {},
+                    isUpsellItem: true,
+                    isStandaloneModifier: true
+                },
+                {
+                    name: 'Cucumber Lemon Soda',
+                    size: 'small',
+                    quantity: 1,
+                    modifiers: {},
+                    isUpsellItem: true,
+                    isStandaloneModifier: true
+                },
+                {
+                    name: 'Crispy Orange Chicken Urban Bowl',
+                    size: 'urban',
+                    quantity: 1,
+                    modifiers: {
+                        riceSubstitution: 'Garlic Butter Fried Rice',
+                        dumplingChoice: 'Pork Dumplings'
+                    },
+                    isUpsellItem: false
+                },
+                {
+                    name: 'Garlic Aioli Waffle Fries',
+                    size: 'no-size',
+                    quantity: 1,
+                    modifiers: {},
+                    isUpsellItem: true,
+                    isStandaloneModifier: true
+                }
+            ]
+        };
+        
+        let output = '<h2>Order Items with Categorization:</h2>';
+        output += '<div style="margin: 20px; padding: 20px; background: #f5f5f5; border-radius: 8px;">';
+        
+        // Process each item
+        testOrder.items.forEach((item, index) => {
+            const categoryInfo = categoryManager.categorizeItem(
+                item.name, 
+                item.size,
+                item.modifiers
+            );
+            
+            output += `<div style="margin: 10px 0; padding: 15px; background: white; border-radius: 5px; border-left: 4px solid ${item.isUpsellItem ? '#ff6b6b' : '#4ecdc4'};">`;
+            output += `<h3 style="margin: 0 0 10px 0; color: ${item.isUpsellItem ? '#ff6b6b' : '#4ecdc4'}">${item.isUpsellItem ? '🛒 UPSELL ITEM' : '🍽️ MAIN ITEM'}</h3>`;
+            output += `<strong>Name:</strong> ${item.name}<br>`;
+            output += `<strong>Quantity:</strong> ${item.quantity}<br>`;
+            output += `<strong>Size:</strong> ${item.size}<br>`;
+            output += `<strong>Category:</strong> ${categoryInfo.displayCategory}<br>`;
+            
+            if (item.modifiers && Object.keys(item.modifiers).length > 0) {
+                output += `<strong>Modifiers:</strong><ul style="margin: 5px 0;">`;
+                Object.entries(item.modifiers).forEach(([key, value]) => {
+                    output += `<li>${key}: ${value}</li>`;
+                });
+                output += `</ul>`;
+            }
+            
+            output += `<div style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 3px;">`;
+            output += `<small><strong>Debug Info:</strong><br>`;
+            output += `Top Category: ${categoryInfo.topCategory} (${categoryInfo.topCategoryName})<br>`;
+            output += `Sub Category: ${categoryInfo.subCategory} (${categoryInfo.subCategoryName})<br>`;
+            output += `Is Standalone: ${item.isStandaloneModifier ? 'Yes' : 'No'}</small>`;
+            output += `</div>`;
+            
+            output += `</div>`;
+        });
+        
+        output += '</div>';
+        
+        // Show summary
+        output += '<h2>Summary:</h2>';
+        output += '<div style="margin: 20px; padding: 20px; background: #e8f4f8; border-radius: 8px;">';
+        
+        const mainItems = testOrder.items.filter(item => !item.isUpsellItem);
+        const upsellItems = testOrder.items.filter(item => item.isUpsellItem);
+        
+        output += `<p><strong>Total Items:</strong> ${testOrder.items.length}</p>`;
+        output += `<p><strong>Main Items:</strong> ${mainItems.length}</p>`;
+        output += '<ul>';
+        mainItems.forEach(item => {
+            output += `<li>${item.name} (${item.quantity}x)</li>`;
+        });
+        output += '</ul>';
+        
+        output += `<p><strong>Upsell Items (Should be separate):</strong> ${upsellItems.length}</p>`;
+        output += '<ul>';
+        upsellItems.forEach(item => {
+            output += `<li>${item.name} (${item.quantity}x) - From: ${item.isUpsellItem ? 'Upsell Section' : 'Unknown'}</li>`;
+        });
+        output += '</ul>';
+        output += '</div>';
+        
+        // Expected vs Actual
+        output += '<h2>✅ Expected Behavior:</h2>';
+        output += '<div style="margin: 20px; padding: 20px; background: #d4edda; border-radius: 8px;">';
+        output += '<p>All items marked as "UPSELL ITEM" should appear as separate items in the consolidator, not hidden as modifiers.</p>';
+        output += '<p>The following should be separate items:</p>';
+        output += '<ol>';
+        output += '<li>Crispy Chipotle Aioli Chicken Rice Bowl (Large)</li>';
+        output += '<li>Chocolate Chip Cookie (2x) - From "Add a Dessert"</li>';
+        output += '<li>Cucumber Lemon Soda (Small) - From "Add a Drink"</li>';
+        output += '<li>Crispy Orange Chicken Urban Bowl</li>';
+        output += '<li>Garlic Aioli Waffle Fries - From "Side Addition"</li>';
+        output += '</ol>';
+        output += '</div>';
+        
+        document.getElementById('results').innerHTML = output;
+    </script>
+</body>
+</html>
