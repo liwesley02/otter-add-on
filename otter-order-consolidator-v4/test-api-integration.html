@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button.primary {
+            background: #007bff;
+            color: white;
+        }
+        button.success {
+            background: #28a745;
+            color: white;
+        }
+        button.danger {
+            background: #dc3545;
+            color: white;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .log {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Otter KDS API Integration Test</h1>
+    
+    <div class="section">
+        <h2>1. API Connection Test</h2>
+        <button class="primary" onclick="testAPIConnection()">Test API Connection</button>
+        <div id="api-status"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. Authentication Test</h2>
+        <input type="email" id="email" placeholder="Email" value="test@restaurant.com">
+        <input type="password" id="password" placeholder="Password" value="testpassword123">
+        <button class="success" onclick="testLogin()">Test Login</button>
+        <div id="auth-status"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. Mock Chrome Extension API Client</h2>
+        <button class="primary" onclick="loadAPIClient()">Load API Client</button>
+        <button class="primary" onclick="checkAuthStatus()">Check Auth Status</button>
+        <div id="client-status"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. Submit Test Order</h2>
+        <button class="success" onclick="submitTestOrder()">Submit Test Order</button>
+        <div id="order-status"></div>
+    </div>
+    
+    <div class="section">
+        <h2>5. WebSocket Test</h2>
+        <button class="primary" onclick="testWebSocket()">Connect WebSocket</button>
+        <button class="danger" onclick="disconnectWebSocket()">Disconnect</button>
+        <div id="ws-status"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Console Log</h2>
+        <div id="console-log" class="log"></div>
+    </div>
+
+    <script>
+        // Override console.log to show in page
+        const originalLog = console.log;
+        const logDiv = document.getElementById('console-log');
+        console.log = function(...args) {
+            originalLog(...args);
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${timestamp}] ${args.join(' ')}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        let apiClient = null;
+        let authToken = null;
+        let ws = null;
+
+        async function testAPIConnection() {
+            const statusDiv = document.getElementById('api-status');
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.innerHTML = '<div class="status success">✓ API is running: ' + JSON.stringify(data) + '</div>';
+                    console.log('API health check passed:', data);
+                } else {
+                    statusDiv.innerHTML = '<div class="status error">✗ API returned error: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status error">✗ Cannot connect to API: ' + error.message + '</div>';
+                statusDiv.innerHTML += '<div class="status info">Make sure the FastAPI server is running on http://localhost:8000</div>';
+            }
+        }
+
+        async function testLogin() {
+            const statusDiv = document.getElementById('auth-status');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.access_token;
+                    statusDiv.innerHTML = '<div class="status success">✓ Login successful!</div>';
+                    statusDiv.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    console.log('Login successful:', data);
+                    
+                    // Store in localStorage to simulate Chrome extension storage
+                    localStorage.setItem('apiToken', data.access_token);
+                    localStorage.setItem('restaurantId', data.restaurant_id);
+                    localStorage.setItem('restaurantName', data.restaurant_name);
+                } else {
+                    const error = await response.json();
+                    statusDiv.innerHTML = '<div class="status error">✗ Login failed: ' + error.detail + '</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status error">✗ Login error: ' + error.message + '</div>';
+            }
+        }
+
+        function loadAPIClient() {
+            const statusDiv = document.getElementById('client-status');
+            
+            // Simulate loading the API client
+            apiClient = {
+                baseUrl: 'http://localhost:8000',
+                token: localStorage.getItem('apiToken'),
+                isAuthenticated: function() {
+                    return !!this.token;
+                }
+            };
+            
+            statusDiv.innerHTML = '<div class="status success">✓ API Client loaded</div>';
+            statusDiv.innerHTML += '<div class="status info">Authenticated: ' + apiClient.isAuthenticated() + '</div>';
+            console.log('API Client loaded:', apiClient);
+        }
+
+        function checkAuthStatus() {
+            const statusDiv = document.getElementById('client-status');
+            const token = localStorage.getItem('apiToken');
+            const restaurantName = localStorage.getItem('restaurantName');
+            
+            if (token) {
+                statusDiv.innerHTML = '<div class="status success">✓ Authenticated as: ' + restaurantName + '</div>';
+                statusDiv.innerHTML += '<div class="status info">Token: ' + token.substring(0, 20) + '...</div>';
+            } else {
+                statusDiv.innerHTML = '<div class="status error">✗ Not authenticated</div>';
+            }
+        }
+
+        async function submitTestOrder() {
+            const statusDiv = document.getElementById('order-status');
+            const token = localStorage.getItem('apiToken');
+            
+            if (!token) {
+                statusDiv.innerHTML = '<div class="status error">✗ Please login first</div>';
+                return;
+            }
+            
+            const testOrder = {
+                order_number: 'TEST-' + Date.now(),
+                customer_name: 'Test Customer',
+                order_type: 'dine-in',
+                platform: 'otter',
+                items: [
+                    {
+                        item_name: 'Test Burger',
+                        category: 'Burgers',
+                        quantity: 2,
+                        price: 12.99,
+                        modifiers: {
+                            'cheese': 'extra',
+                            'sauce': 'none'
+                        }
+                    },
+                    {
+                        item_name: 'French Fries',
+                        category: 'Sides',
+                        quantity: 1,
+                        price: 4.99
+                    }
+                ],
+                total_amount: 30.97,
+                metadata: {
+                    source: 'test-page',
+                    version: '1.0.0'
+                }
+            };
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/orders/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(testOrder)
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.innerHTML = '<div class="status success">✓ Order submitted successfully!</div>';
+                    statusDiv.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    console.log('Order submitted:', data);
+                } else {
+                    const error = await response.json();
+                    statusDiv.innerHTML = '<div class="status error">✗ Order submission failed: ' + error.detail + '</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status error">✗ Order submission error: ' + error.message + '</div>';
+            }
+        }
+
+        function testWebSocket() {
+            const statusDiv = document.getElementById('ws-status');
+            const token = localStorage.getItem('apiToken');
+            
+            if (!token) {
+                statusDiv.innerHTML = '<div class="status error">✗ Please login first</div>';
+                return;
+            }
+            
+            const wsUrl = `ws://localhost:8000/ws/orders?token=${encodeURIComponent(token)}`;
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    statusDiv.innerHTML = '<div class="status success">✓ WebSocket connected</div>';
+                    console.log('WebSocket connected');
+                };
+                
+                ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    console.log('WebSocket message:', message);
+                    statusDiv.innerHTML += '<div class="status info">Message: ' + JSON.stringify(message) + '</div>';
+                };
+                
+                ws.onclose = () => {
+                    statusDiv.innerHTML += '<div class="status error">WebSocket disconnected</div>';
+                    console.log('WebSocket disconnected');
+                };
+                
+                ws.onerror = (error) => {
+                    statusDiv.innerHTML += '<div class="status error">WebSocket error: ' + error + '</div>';
+                    console.error('WebSocket error:', error);
+                };
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status error">✗ WebSocket connection error: ' + error.message + '</div>';
+            }
+        }
+
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        // Test on load
+        window.onload = () => {
+            console.log('Test page loaded');
+            testAPIConnection();
+        };
+    </script>
+</body>
+</html>

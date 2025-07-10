@@ -1,0 +1,37 @@
+
+> hhg-kds@6.0.0 dev
+> next dev
+
+  ▲ Next.js 14.2.5
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 12.3s
+ ○ Compiling /dashboard ...
+ ✓ Compiled / in 19s (681 modules)
+ GET / 200 in 2585ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 670ms (394 modules)
+ GET /favicon.ico 200 in 3180ms
+ GET /dashboard 200 in 2698ms
+ GET /dashboard 200 in 207ms
+ GET /favicon.ico 200 in 78ms
+ GET /dashboard 200 in 146ms
+ GET /favicon.ico 200 in 60ms
+ GET / 200 in 86ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1119ms (700 modules)
+ GET /auth/login 404 in 1400ms
+ GET / 200 in 91ms
+ GET /analytics 404 in 36ms
+ GET / 200 in 50ms
+ GET /predictions 404 in 29ms
+ GET / 200 in 377ms
+ GET /dashboard 200 in 350ms
+ GET /dashboard/demo 404 in 48ms
+ GET /dashboard 200 in 71ms
+ GET /favicon.ico 200 in 72ms
+ GET /dashboard 200 in 131ms
+ GET / 200 in 143ms
+[?25h

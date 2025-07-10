@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Extension File Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Otter Extension File Verification</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function checkFile(path) {
+            try {
+                const response = await fetch(path);
+                const text = await response.text();
+                
+                // Check for syntax issues
+                const issues = [];
+                
+                // Check for orphaned modal code
+                if (text.includes('const modal = document.createElement') && 
+                    !text.includes('function') && 
+                    text.indexOf('const modal') < text.indexOf('function')) {
+                    issues.push('Orphaned modal code found outside function');
+                }
+                
+                // Check for proper class definition
+                if (path.includes('overlay.js') && !text.includes('class OverlayUI')) {
+                    issues.push('OverlayUI class not found');
+                }
+                
+                return { path, success: issues.length === 0, issues, preview: text.substring(0, 200) };
+            } catch (error) {
+                return { path, success: false, issues: [error.message] };
+            }
+        }
+        
+        async function verifyFiles() {
+            const results = document.getElementById('results');
+            const files = [
+                'content/overlay.js',
+                'content/content.js',
+                'background.js',
+                'manifest.json'
+            ];
+            
+            for (const file of files) {
+                const result = await checkFile(file);
+                const div = document.createElement('div');
+                div.className = `status ${result.success ? 'success' : 'error'}`;
+                div.innerHTML = `
+                    <h3>${file}</h3>
+                    ${result.success ? 
+                        '<p>✅ File is valid</p>' : 
+                        `<p>❌ Issues found:</p><ul>${result.issues.map(i => `<li>${i}</li>`).join('')}</ul>`
+                    }
+                `;
+                results.appendChild(div);
+            }
+            
+            // Check critical sections
+            const overlayResponse = await fetch('content/overlay.js');
+            const overlayText = await overlayResponse.text();
+            
+            // Find line 67-72
+            const lines = overlayText.split('\n');
+            const section = lines.slice(66, 72).join('\n');
+            
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'status warning';
+            sectionDiv.innerHTML = `
+                <h3>Critical Section Check (lines 67-72)</h3>
+                <pre>${section}</pre>
+                <p>${section.includes('return true;') && section.includes('}') ? 
+                    '✅ Modal function properly closed' : 
+                    '❌ Modal function not properly closed'}</p>
+            `;
+            results.appendChild(sectionDiv);
+        }
+        
+        verifyFiles();
+    </script>
+</body>
+</html>

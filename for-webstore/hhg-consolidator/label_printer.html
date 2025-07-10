@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Label Printer</title>
+    <link rel="stylesheet" href="label_styles.css"> <style>
+        /* Basic UI styles - Label styles are now in label_styles.css */
+        body { font-family: 'Inter', sans-serif; }
+        .live-order-item { cursor: pointer; transition: background-color 0.2s ease-in-out; }
+        .live-order-item.selected { background-color: #e0e7ff; border-left-width: 4px; border-color: #4f46e5; }
+        .no-print { /* This class will hide elements when printing */ }
+        @media print { .no-print { display: none !important; } }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto max-w-7xl p-4 sm:p-6">
+        <header class="mb-6 no-print">
+            <h1 class="text-3xl font-bold text-center text-gray-700">Order Label Printer</h1>
+            <p class="text-center text-gray-500 mt-1">Order items ready for label generation.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+             <div class="lg:col-span-1 space-y-6 no-print">
+                <div class="bg-white p-5 rounded-lg shadow-lg">
+                    <h2 class="text-xl font-semibold mb-3 text-gray-700">Items for Labeling (<span id="selectedOrderName">Loading Order...</span>)</h2>
+                    <div id="orderItemsList" class="space-y-1 mb-4 max-h-80 overflow-y-auto">
+                        <p class="text-gray-500 text-sm italic">Loading items...</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="generateLabelsButton" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md shadow-sm text-sm">
+                            Generate Preview
+                        </button>
+                        <button id="printLabelsButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-md shadow-sm text-sm">
+                            Print Labels
+                        </button>
+                    </div>
+                </div>
+                 <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-xs text-gray-700">
+                    <strong>Instructions:</strong> This page should load data automatically when opened by the extension. Use 'Generate Preview' then 'Print Labels'. Ensure print settings are 100% scale and US Letter.
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <h2 class="text-2xl font-semibold mb-3 text-center text-gray-700 no-print">Label Preview</h2>
+                <div class="label-sheet-container">
+                    <div id="labelSheetPreview" class="label-sheet">
+                        </div>
+                </div>
+                <p id="labelCountMessage" class="text-center text-gray-500 mt-2 no-print text-sm"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="print-only-container-wrapper" style="display: none;"></div>
+
+    <script src="label_printer.js"></script>
+</body>
+</html>

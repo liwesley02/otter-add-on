@@ -1,0 +1,22 @@
+{
+  "restaurant1": {
+    "username": "manager@restaurant1.com",
+    "password": "password1",
+    "base_url": "https://api.tryotter.com",
+    "description": "Main Street Location",
+    "restaurant_ids": ["REST_001"]
+  },
+  "restaurant2": {
+    "username": "manager@restaurant2.com", 
+    "password": "password2",
+    "base_url": "https://api.tryotter.com",
+    "description": "Downtown Location",
+    "restaurant_ids": ["REST_002", "REST_003"]
+  },
+  "test_account": {
+    "username": "test@example.com",
+    "password": "testpass",
+    "base_url": "https://api-staging.tryotter.com",
+    "description": "Test/Staging Account"
+  }
+}

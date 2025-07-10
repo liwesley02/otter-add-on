@@ -1,0 +1,17 @@
+
+> hhg-kds@6.0.0 dev
+> next dev -H 0.0.0.0
+
+  ▲ Next.js 14.2.5
+  - Local:        http://localhost:3000
+  - Network:      http://0.0.0.0:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 11.5s
+ ○ Compiling /dashboard/demo ...
+ ✓ Compiled / in 10.7s (510 modules)
+ HEAD / 200 in 1284ms
+ GET /dashboard/demo 200 in 11174ms
+ ✓ Compiled /favicon.ico in 274ms (292 modules)
+ GET /favicon.ico 200 in 479ms

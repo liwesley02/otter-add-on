@@ -11,7 +11,9 @@
   ],
   "host_permissions": [
     "https://app.tryotter.com/*",
-    "https://*.tryotter.com/*"
+    "https://*.tryotter.com/*",
+    "http://localhost:8000/*",
+    "ws://localhost:8000/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -24,6 +26,7 @@
         "utils/logger.js",
         "utils/htmlEscape.js",
         "utils/categoryCache.js",
+        "utils/apiClient.js",
         "components/itemMatcher.js",
         "components/orderBatcher.js",
         "components/categoryManager.js",
@@ -35,6 +38,7 @@
         "content/orderCache.js",
         "content/reactDataExtractor.js",
         "content/orderExtractor.js",
+        "content/authUI.js",
         "content/overlay.js",
         "content/labelPreviewModal.js",
         "content/debugHelper.js",

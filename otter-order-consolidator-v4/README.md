@@ -1,6 +1,6 @@
-# Otter Order Consolidator v3
+# Otter Order Consolidator v5
 
-A Chrome extension that consolidates and organizes restaurant orders from tryotter.com to optimize kitchen operations and improve order fulfillment efficiency.
+A Chrome extension that consolidates and organizes restaurant orders from tryotter.com with intelligent prep time tracking to optimize kitchen operations and improve order fulfillment efficiency.
 
 ## 🎯 Project Purpose
 
@@ -22,6 +22,11 @@ The goal is to transform a chaotic list of individual orders into an organized, 
 - Rice type badge display (White Rice, Fried Rice, Garlic Butter, Noodles)
 - Two-column layout for better space usage
 - Completed order detection and removal
+- **NEW in v5**: Intelligent prep time tracking and analytics
+- **NEW in v5**: Real-time average prep time display
+- **NEW in v5**: Estimated completion times for batches
+- **NEW in v5**: Visual indicators for orders running late
+- **NEW in v5**: Historical prep time data (7-day retention)
 
 ### 🚧 In Progress
 - Three-level hierarchy implementation (Size/Type → Protein → Sauce)
