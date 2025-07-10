@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition (Fixed)
 // @namespace    http://tampermonkey.net/
-// @version      4.0.3
+// @version      4.0.4
 // @description  Consolidate orders and print batch labels for Otter (Tablet Compatible)
 // @author       Your Name
 // @match        https://app.tryotter.com/*
@@ -71,12 +71,91 @@
             triggerBtn.onclick = () => {
                 loadingIndicator.innerHTML = '⚡ Initializing...';
                 loadingIndicator.style.background = '#ff9800';
-                // Force initialization
+                
+                // Create a simple overlay if init fails
                 setTimeout(() => {
-                    if (typeof init !== 'undefined') {
-                        init();
+                    try {
+                        // Try to create the overlay directly
+                        let overlay = document.getElementById('otter-consolidator-overlay');
+                        if (!overlay) {
+                            overlay = document.createElement('div');
+                            overlay.id = 'otter-consolidator-overlay';
+                            overlay.style.cssText = `
+                                position: fixed;
+                                top: 0;
+                                right: 0;
+                                width: 400px;
+                                height: 100vh;
+                                background: white;
+                                box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+                                z-index: 999998;
+                                overflow-y: auto;
+                                padding: 20px;
+                            `;
+                            overlay.innerHTML = `
+                                <h2 style="margin-top:0">Order Consolidator</h2>
+                                <p style="color:#666">Manual mode - Click Extract Orders below</p>
+                                <button id="extract-orders-btn" style="
+                                    background: #4CAF50;
+                                    color: white;
+                                    border: none;
+                                    padding: 10px 20px;
+                                    border-radius: 5px;
+                                    font-size: 16px;
+                                    cursor: pointer;
+                                    width: 100%;
+                                    margin: 10px 0;
+                                ">📦 Extract Orders</button>
+                                <button id="close-overlay-btn" style="
+                                    background: #f44336;
+                                    color: white;
+                                    border: none;
+                                    padding: 10px 20px;
+                                    border-radius: 5px;
+                                    font-size: 16px;
+                                    cursor: pointer;
+                                    width: 100%;
+                                ">❌ Close</button>
+                                <div id="order-results" style="margin-top:20px"></div>
+                            `;
+                            document.body.appendChild(overlay);
+                            
+                            // Add functionality
+                            document.getElementById('close-overlay-btn').onclick = () => {
+                                overlay.remove();
+                                loadingIndicator.innerHTML = '✅ Closed';
+                            };
+                            
+                            document.getElementById('extract-orders-btn').onclick = () => {
+                                const results = document.getElementById('order-results');
+                                results.innerHTML = '<p>Searching for orders...</p>';
+                                
+                                // Simple order extraction
+                                const orderElements = document.querySelectorAll('[data-testid*="order"], [class*="order-card"], [class*="OrderCard"]');
+                                results.innerHTML = `<p>Found ${orderElements.length} potential orders</p>`;
+                                
+                                if (orderElements.length === 0) {
+                                    results.innerHTML += '<p style="color:red">No orders found. Make sure you are on the orders page.</p>';
+                                }
+                            };
+                            
+                            loadingIndicator.innerHTML = '✅ Overlay Open';
+                            loadingIndicator.style.background = '#4CAF50';
+                        }
+                        
+                        // Also try the real init
+                        if (window.init) {
+                            window.init().catch(err => {
+                                console.error('Init failed:', err);
+                                loadingIndicator.innerHTML = '⚠️ Using Manual Mode';
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Manual overlay creation failed:', err);
+                        loadingIndicator.innerHTML = '❌ Error: ' + err.message;
+                        loadingIndicator.style.background = '#f44336';
                     }
-                }, 100);
+                }, 500);
             };
             document.body.appendChild(triggerBtn);
             
