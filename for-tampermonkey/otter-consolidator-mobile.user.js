@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator - Mobile Firefox
 // @namespace    http://tampermonkey.net/
-// @version      5.1.0
+// @version      5.2.0
 // @description  Consolidate orders from Otter Dashboard for batch processing - Mobile Firefox compatible
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -1304,6 +1304,12 @@
                     border: 1px solid #f5c6cb;
                 }
                 
+                .otter-message-warning {
+                    background: #fff3cd;
+                    color: #856404;
+                    border: 1px solid #ffeaa7;
+                }
+                
                 /* Mobile styles */
                 @media (max-width: 768px) {
                     .otter-overlay {
@@ -1476,10 +1482,12 @@
             this.authChecked = true;
             this.isAuthenticated = result.isAuthenticated;
             
+            // Always show main UI - auth is optional
+            this.showMainUI();
+            
+            // Show auth status in the UI
             if (!this.isAuthenticated) {
-                this.showAuthUI();
-            } else {
-                this.showMainUI();
+                this.showAuthStatus();
             }
         }
 
@@ -1520,6 +1528,61 @@
                     document.getElementById('otterAuthSubmit').click();
                 }
             });
+        }
+
+        showAuthStatus() {
+            // Add a small auth status indicator
+            const authIndicator = document.createElement('div');
+            authIndicator.id = 'otterAuthIndicator';
+            authIndicator.className = 'otter-message otter-message-warning';
+            authIndicator.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>⚠️ API not connected (optional)</span>
+                    <button class="otter-btn otter-btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="document.getElementById('otterAuthModal').style.display='block'">
+                        Connect API
+                    </button>
+                </div>
+            `;
+            
+            const content = document.getElementById('otterContent');
+            if (content && !document.getElementById('otterAuthIndicator')) {
+                content.insertBefore(authIndicator, content.firstChild);
+            }
+            
+            // Create auth modal
+            if (!document.getElementById('otterAuthModal')) {
+                const modal = document.createElement('div');
+                modal.id = 'otterAuthModal';
+                modal.style.cssText = `
+                    display: none;
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+                    z-index: 1000000;
+                `;
+                modal.innerHTML = `
+                    <h3>Connect API (Optional)</h3>
+                    <p>Enter API key for prep time tracking</p>
+                    <input type="password" id="otterModalApiKey" class="otter-auth-input" placeholder="API Key">
+                    <div style="margin-top: 10px;">
+                        <button class="otter-btn otter-btn-primary" onclick="
+                            const key = document.getElementById('otterModalApiKey').value;
+                            if (key) {
+                                apiClient.saveApiKey(key).then(() => {
+                                    location.reload();
+                                });
+                            }
+                        ">Connect</button>
+                        <button class="otter-btn otter-btn-secondary" onclick="document.getElementById('otterAuthModal').style.display='none'">Cancel</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
         }
 
         showMainUI() {
@@ -1570,6 +1633,9 @@
             document.getElementById('otterProcessBatch').addEventListener('click', () => {
                 this.processBatch();
             });
+            
+            // Immediately refresh orders
+            this.refreshOrders();
         }
 
         async refreshOrders() {
