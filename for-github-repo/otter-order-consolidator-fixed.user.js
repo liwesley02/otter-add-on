@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition (Fixed)
 // @namespace    http://tampermonkey.net/
-// @version      4.2.0
+// @version      4.0.4
 // @description  Consolidate orders and print batch labels for Otter (Tablet Compatible)
 // @author       Your Name
 // @match        https://app.tryotter.com/*
@@ -26,6 +26,151 @@
 
 (function() {
     'use strict';
+    
+    // Show immediate visual feedback
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.id = 'otter-loading-indicator';
+    loadingIndicator.innerHTML = '🔄 Otter Consolidator Loading...';
+    loadingIndicator.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: #ff6b6b;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        z-index: 999999;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    `;
+    
+    // Wait for body to be available
+    function addIndicator() {
+        if (document.body) {
+            document.body.appendChild(loadingIndicator);
+            
+            // Add a simple button to manually trigger the consolidator
+            const triggerBtn = document.createElement('button');
+            triggerBtn.innerHTML = '📦 Open Consolidator';
+            triggerBtn.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: #4CAF50;
+                color: white;
+                border: none;
+                padding: 15px 20px;
+                border-radius: 50px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                z-index: 999999;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            triggerBtn.onclick = () => {
+                loadingIndicator.innerHTML = '⚡ Initializing...';
+                loadingIndicator.style.background = '#ff9800';
+                
+                // Create a simple overlay if init fails
+                setTimeout(() => {
+                    try {
+                        // Try to create the overlay directly
+                        let overlay = document.getElementById('otter-consolidator-overlay');
+                        if (!overlay) {
+                            overlay = document.createElement('div');
+                            overlay.id = 'otter-consolidator-overlay';
+                            overlay.style.cssText = `
+                                position: fixed;
+                                top: 0;
+                                right: 0;
+                                width: 400px;
+                                height: 100vh;
+                                background: white;
+                                box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+                                z-index: 999998;
+                                overflow-y: auto;
+                                padding: 20px;
+                            `;
+                            overlay.innerHTML = `
+                                <h2 style="margin-top:0">Order Consolidator</h2>
+                                <p style="color:#666">Manual mode - Click Extract Orders below</p>
+                                <button id="extract-orders-btn" style="
+                                    background: #4CAF50;
+                                    color: white;
+                                    border: none;
+                                    padding: 10px 20px;
+                                    border-radius: 5px;
+                                    font-size: 16px;
+                                    cursor: pointer;
+                                    width: 100%;
+                                    margin: 10px 0;
+                                ">📦 Extract Orders</button>
+                                <button id="close-overlay-btn" style="
+                                    background: #f44336;
+                                    color: white;
+                                    border: none;
+                                    padding: 10px 20px;
+                                    border-radius: 5px;
+                                    font-size: 16px;
+                                    cursor: pointer;
+                                    width: 100%;
+                                ">❌ Close</button>
+                                <div id="order-results" style="margin-top:20px"></div>
+                            `;
+                            document.body.appendChild(overlay);
+                            
+                            // Add functionality
+                            document.getElementById('close-overlay-btn').onclick = () => {
+                                overlay.remove();
+                                loadingIndicator.innerHTML = '✅ Closed';
+                            };
+                            
+                            document.getElementById('extract-orders-btn').onclick = () => {
+                                const results = document.getElementById('order-results');
+                                results.innerHTML = '<p>Searching for orders...</p>';
+                                
+                                // Simple order extraction
+                                const orderElements = document.querySelectorAll('[data-testid*="order"], [class*="order-card"], [class*="OrderCard"]');
+                                results.innerHTML = `<p>Found ${orderElements.length} potential orders</p>`;
+                                
+                                if (orderElements.length === 0) {
+                                    results.innerHTML += '<p style="color:red">No orders found. Make sure you are on the orders page.</p>';
+                                }
+                            };
+                            
+                            loadingIndicator.innerHTML = '✅ Overlay Open';
+                            loadingIndicator.style.background = '#4CAF50';
+                        }
+                        
+                        // Also try the real init
+                        if (window.init) {
+                            window.init().catch(err => {
+                                console.error('Init failed:', err);
+                                loadingIndicator.innerHTML = '⚠️ Using Manual Mode';
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Manual overlay creation failed:', err);
+                        loadingIndicator.innerHTML = '❌ Error: ' + err.message;
+                        loadingIndicator.style.background = '#f44336';
+                    }
+                }, 500);
+            };
+            document.body.appendChild(triggerBtn);
+            
+            setTimeout(() => {
+                loadingIndicator.style.background = '#4CAF50';
+                loadingIndicator.innerHTML = '✅ Otter Consolidator Ready';
+                setTimeout(() => {
+                    loadingIndicator.style.opacity = '0.7';
+                }, 2000);
+            }, 1000);
+        } else {
+            setTimeout(addIndicator, 100);
+        }
+    }
+    addIndicator();
 
     // ===== GM Storage Wrapper =====
     // Provides Chrome storage API compatibility using Tampermonkey storage
@@ -80,14 +225,9 @@
         }
     };
 
-    // ===== Chrome API Replacement =====
+    // ===== Chrome Runtime API Replacement =====
     if (typeof chrome === 'undefined') {
         window.chrome = {};
-    }
-    
-    // Expose storage API on chrome object
-    if (!window.chrome.storage) {
-        window.chrome.storage = storage;
     }
     
     if (!window.chrome.runtime) {
@@ -176,35 +316,26 @@
     };
 
     // ===== Chrome Tabs API Replacement =====
-    if (!window.chrome.tabs) {
-        window.chrome.tabs = {
-            create: (options, callback) => {
-                if (options.url) {
-                    const newTab = GM_openInTab(options.url, {
-                        active: options.active !== false,
-                        insert: true
-                    });
-                    if (callback) {
-                        // Simulate a tab object
-                        callback({ id: Date.now(), url: options.url });
-                    }
-                }
-            },
-            get: (tabId, callback) => {
-                // Can't really get tab info in Tampermonkey, return a mock
-                if (callback) {
-                    callback({ id: tabId, url: window.location.href });
-                }
+    const tabs = {
+        create: (options) => {
+            if (options.url) {
+                GM_openInTab(options.url, {
+                    active: options.active !== false,
+                    insert: true
+                });
             }
-        };
-    }
+        }
+    };
 
-    // Add extension API
-    if (!window.chrome.extension) {
-        window.chrome.extension = {
-            getURL: (path) => path
-        };
-    }
+    // Mock chrome object
+    window.chrome = {
+        storage,
+        runtime,
+        tabs,
+        extension: {
+            getURL: runtime.getURL
+        }
+    };
 
     // ===== Inline CSS Styles =====
     const overlayStyles = `
@@ -4990,249 +5121,6 @@ body {
       module.exports = CategoryManager;
     }
 
-    // ----- components/prepTimeTracker.js -----
-    /**
-     * Prep Time Tracker
-     * Tracks order completion times and calculates average preparation times
-     * Adapted for Tampermonkey environment
-     */
-    
-    class PrepTimeTracker {
-      constructor() {
-        this.completedOrders = new Map(); // orderId -> completion data
-        this.storageKey = 'prepTimeData';
-        this.loadFromStorage();
-      }
-    
-      /**
-       * Track when an order transitions from cooking to completed
-       * @param {string} orderId - The order ID
-       * @param {Date} orderedAt - When the order was placed
-       * @param {Date} completedAt - When the order was completed
-       */
-      trackOrderCompletion(orderId, orderedAt, completedAt = new Date()) {
-        if (this.completedOrders.has(orderId)) {
-          console.log(`[PrepTimeTracker] Order ${orderId} already tracked`);
-          return;
-        }
-    
-        const prepTimeMinutes = Math.floor((completedAt - orderedAt) / 60000);
-        
-        const completionData = {
-          orderId,
-          orderedAt: orderedAt.toISOString(),
-          completedAt: completedAt.toISOString(),
-          prepTimeMinutes,
-          dayOfWeek: completedAt.getDay(),
-          hourOfDay: completedAt.getHours()
-        };
-    
-        this.completedOrders.set(orderId, completionData);
-        console.log(`[PrepTimeTracker] Tracked order ${orderId}: ${prepTimeMinutes} minutes prep time`);
-        
-        // Clean up old data (keep last 7 days)
-        this.cleanupOldData();
-        
-        // Save to storage
-        this.saveToStorage();
-      }
-    
-      /**
-       * Get average prep time for the last hour
-       * @returns {Object} { averageMinutes, orderCount }
-       */
-      getLastHourAverage() {
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const relevantOrders = [];
-    
-        this.completedOrders.forEach(order => {
-          const completedAt = new Date(order.completedAt);
-          if (completedAt >= oneHourAgo) {
-            relevantOrders.push(order);
-          }
-        });
-    
-        if (relevantOrders.length === 0) {
-          return { averageMinutes: 0, orderCount: 0 };
-        }
-    
-        const totalMinutes = relevantOrders.reduce((sum, order) => sum + order.prepTimeMinutes, 0);
-        return {
-          averageMinutes: Math.round(totalMinutes / relevantOrders.length),
-          orderCount: relevantOrders.length
-        };
-      }
-    
-      /**
-       * Get average prep time for today
-       * @returns {Object} { averageMinutes, orderCount }
-       */
-      getTodayAverage() {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const relevantOrders = [];
-    
-        this.completedOrders.forEach(order => {
-          const completedAt = new Date(order.completedAt);
-          if (completedAt >= today) {
-            relevantOrders.push(order);
-          }
-        });
-    
-        if (relevantOrders.length === 0) {
-          return { averageMinutes: 0, orderCount: 0 };
-        }
-    
-        const totalMinutes = relevantOrders.reduce((sum, order) => sum + order.prepTimeMinutes, 0);
-        return {
-          averageMinutes: Math.round(totalMinutes / relevantOrders.length),
-          orderCount: relevantOrders.length
-        };
-      }
-    
-      /**
-       * Get hourly breakdown for today
-       * @returns {Array} Array of { hour, averageMinutes, orderCount }
-       */
-      getTodayHourlyBreakdown() {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const hourlyData = {};
-    
-        this.completedOrders.forEach(order => {
-          const completedAt = new Date(order.completedAt);
-          if (completedAt >= today) {
-            const hour = order.hourOfDay;
-            if (!hourlyData[hour]) {
-              hourlyData[hour] = { totalMinutes: 0, count: 0 };
-            }
-            hourlyData[hour].totalMinutes += order.prepTimeMinutes;
-            hourlyData[hour].count++;
-          }
-        });
-    
-        const breakdown = [];
-        for (let hour = 0; hour < 24; hour++) {
-          if (hourlyData[hour]) {
-            breakdown.push({
-              hour,
-              averageMinutes: Math.round(hourlyData[hour].totalMinutes / hourlyData[hour].count),
-              orderCount: hourlyData[hour].count
-            });
-          }
-        }
-    
-        return breakdown;
-      }
-    
-      /**
-       * Get statistics for display
-       */
-      getStatistics() {
-        const lastHour = this.getLastHourAverage();
-        const today = this.getTodayAverage();
-        const hourlyBreakdown = this.getTodayHourlyBreakdown();
-    
-        // Calculate peak hours
-        const peakHours = hourlyBreakdown
-          .sort((a, b) => b.orderCount - a.orderCount)
-          .slice(0, 3)
-          .map(h => h.hour);
-    
-        return {
-          lastHour,
-          today,
-          hourlyBreakdown,
-          peakHours,
-          totalOrdersTracked: this.completedOrders.size
-        };
-      }
-    
-      /**
-       * Clean up data older than 7 days
-       */
-      cleanupOldData() {
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const toDelete = [];
-    
-        this.completedOrders.forEach((order, orderId) => {
-          const completedAt = new Date(order.completedAt);
-          if (completedAt < sevenDaysAgo) {
-            toDelete.push(orderId);
-          }
-        });
-    
-        toDelete.forEach(orderId => this.completedOrders.delete(orderId));
-        
-        if (toDelete.length > 0) {
-          console.log(`[PrepTimeTracker] Cleaned up ${toDelete.length} old orders`);
-        }
-      }
-    
-      /**
-       * Save data to GM storage
-       */
-      async saveToStorage() {
-        const data = Array.from(this.completedOrders.entries());
-        await GM_setValue(this.storageKey, {
-          orders: data,
-          lastUpdated: new Date().toISOString()
-        });
-      }
-    
-      /**
-       * Load data from GM storage
-       */
-      async loadFromStorage() {
-        try {
-          const stored = await GM_getValue(this.storageKey);
-          if (stored && stored.orders) {
-            this.completedOrders = new Map(stored.orders);
-            console.log(`[PrepTimeTracker] Loaded ${this.completedOrders.size} orders from storage`);
-            console.log(`[PrepTimeTracker] Last updated: ${stored.lastUpdated}`);
-            
-            // Clean up old data on load
-            this.cleanupOldData();
-          }
-        } catch (error) {
-          console.log('[PrepTimeTracker] Error loading from storage:', error);
-        }
-      }
-    
-      /**
-       * Check if an order is already completed
-       */
-      isOrderCompleted(orderId) {
-        return this.completedOrders.has(orderId);
-      }
-    
-      /**
-       * Get completion data for a specific order
-       */
-      getOrderCompletionData(orderId) {
-        return this.completedOrders.get(orderId);
-      }
-    
-      /**
-       * Export data for analysis
-       */
-      exportData() {
-        const data = Array.from(this.completedOrders.values());
-        return {
-          orders: data,
-          summary: this.getStatistics(),
-          exportedAt: new Date().toISOString()
-        };
-      }
-    }
-    
-    // Make available globally
-    window.PrepTimeTracker = PrepTimeTracker;
-    
-    // Create and initialize the global prep time tracker
-    window.otterPrepTimeTracker = new PrepTimeTracker();
-    console.log('[PrepTimeTracker] Initialized global instance');
-
     // ----- components/batchManager.js -----
     if (window.logger) {
       window.logger.log('[BatchManager.js] Script loaded at:', new Date().toISOString());
@@ -5248,13 +5136,11 @@ body {
         this.maxBatchCapacity = 5; // Default batch size is 5
         this.currentBatchIndex = 0;
         this.nextBatchNumber = 1;
-        this.orderTimestamps = new Map(); // orderId -> original orderedAt timestamp
         
         // FIFO batching - no time-based assignment
         // Orders stay in their original batch
         
         this.loadSettings();
-        this.loadOrderTimestamps();
         this.initializeBatches();
       }
       
@@ -5361,31 +5247,11 @@ body {
           if (orderBatch) {
             // Order already assigned, keep it in same batch
             batch = orderBatch;
-            // Preserve the stored timestamp when updating order data
-            const storedTimestamp = this.getStoredOrderTimestamp(order.id);
-            if (storedTimestamp) {
-              order.orderedAt = storedTimestamp;
-            }
-            
             // Update the order data (in case wait time changed)
             batch.orders.set(order.id, order);
           } else {
             // New order, assign to appropriate batch
             batch = this.getBatchForOrder(order);
-            
-            // Check if we already have the original timestamp for this order
-            const storedTimestamp = this.getStoredOrderTimestamp(order.id);
-            if (storedTimestamp) {
-              // Use the stored timestamp
-              order.orderedAt = storedTimestamp;
-              console.log(`[BatchManager] Using stored timestamp for order ${order.id}: ${storedTimestamp}`);
-            } else {
-              // Store the current timestamp for future reference
-              this.storeOrderTimestamp(order.id, order.orderedAt);
-              console.log(`[BatchManager] Storing new timestamp for order ${order.id}: ${order.orderedAt}`);
-            }
-            
-            
             // Add timestamp for new order tracking
             order.addedAt = Date.now();
             batch.orders.set(order.id, order);
@@ -5431,52 +5297,15 @@ body {
       }
       
       async loadSettings() {
-        try {
-          const settings = await GM_getValue('settings');
-          if (settings && settings.maxBatchCapacity) {
-            this.maxBatchCapacity = settings.maxBatchCapacity;
-          } else if (settings && settings.maxWaveCapacity) {
-            // Backward compatibility
-            this.maxBatchCapacity = settings.maxWaveCapacity;
-          }
-          // Don't update existing batches - only affects new batches
-        } catch (error) {
-          console.error('[BatchManager] Error loading settings:', error);
-          // Use default value
-          this.maxBatchCapacity = 5;
+        const settings = await Storage.get('settings');
+        if (settings && settings.maxBatchCapacity) {
+          this.maxBatchCapacity = settings.maxBatchCapacity;
+        } else if (settings && settings.maxWaveCapacity) {
+          // Backward compatibility
+          this.maxBatchCapacity = settings.maxWaveCapacity;
         }
+        // Don't update existing batches - only affects new batches
       }
-      
-      async loadOrderTimestamps() {
-        try {
-          const stored = await GM_getValue('orderTimestamps');
-          if (stored && typeof stored === 'object') {
-            this.orderTimestamps = new Map(Object.entries(stored));
-            console.log(`[BatchManager] Loaded ${this.orderTimestamps.size} order timestamps`);
-          }
-        } catch (error) {
-          console.error('[BatchManager] Error loading order timestamps:', error);
-        }
-      }
-      
-      async saveOrderTimestamps() {
-        try {
-          const data = Object.fromEntries(this.orderTimestamps);
-          await GM_setValue('orderTimestamps', data);
-        } catch (error) {
-          console.error('[BatchManager] Error saving order timestamps:', error);
-        }
-      }
-      
-      storeOrderTimestamp(orderId, timestamp) {
-        this.orderTimestamps.set(orderId, timestamp);
-        this.saveOrderTimestamps();
-      }
-      
-      getStoredOrderTimestamp(orderId) {
-        return this.orderTimestamps.get(orderId);
-      }
-      
     
       generateBatchId() {
         return `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -5761,14 +5590,9 @@ body {
               batch.orders.delete(orderId);
               // Remove from new orders set if present
               batch.newOrderIds.delete(orderId);
-              // Also clean up the stored timestamp
-              this.orderTimestamps.delete(orderId);
             }
           });
         });
-        
-        // Save the cleaned up timestamps
-        this.saveOrderTimestamps();
       }
       
       // Clear "new" status from orders after 30 seconds
@@ -6312,8 +6136,7 @@ body {
     class BatchLabelPrinter {
       constructor() {
         this.labelTransformer = new LabelDataTransformer();
-        // For Tampermonkey, we'll create the label printer inline
-        this.labelPrinterUrl = 'about:blank'; // We'll inject the HTML after opening
+        this.labelPrinterUrl = chrome.runtime.getURL('label_printer.html');
       }
     
       /**
@@ -6407,207 +6230,45 @@ body {
       async openLabelPrinter() {
         return new Promise((resolve, reject) => {
           console.log('[BatchLabelPrinter] Opening label printer...');
+          console.log('[BatchLabelPrinter] Label printer URL:', this.labelPrinterUrl);
           
-          try {
-            // Get the stored label data
-            chrome.storage.local.get('pendingLabelData', (result) => {
-              const labelData = result.pendingLabelData;
-              if (!labelData) {
-                reject(new Error('No label data found'));
-                return;
+          // Check if we're in a content script
+          if (typeof chrome.tabs === 'undefined' || !chrome.tabs.create) {
+            console.log('[BatchLabelPrinter] Running in content script, sending message to background');
+            
+            // Send message to background script to open tab
+            chrome.runtime.sendMessage(
+              { action: 'openLabelPrinter', url: this.labelPrinterUrl },
+              (response) => {
+                console.log('[BatchLabelPrinter] Background response:', response);
+                
+                if (chrome.runtime.lastError) {
+                  console.error('[BatchLabelPrinter] Chrome runtime error:', chrome.runtime.lastError);
+                  reject(new Error(chrome.runtime.lastError.message));
+                } else if (response && response.success) {
+                  console.log('[BatchLabelPrinter] Successfully opened label printer');
+                  resolve(response.tab);
+                } else {
+                  console.error('[BatchLabelPrinter] Failed response:', response);
+                  reject(new Error(response ? response.error : 'Failed to open label printer'));
+                }
               }
-              
-              // Create the label printer HTML with embedded data
-              const labelPrinterHTML = this.generateLabelPrinterHTML(labelData);
-              
-              // Create a blob URL for the HTML
-              const blob = new Blob([labelPrinterHTML], { type: 'text/html' });
-              const blobUrl = URL.createObjectURL(blob);
-              
-              // Open in new tab using Tampermonkey's GM_openInTab
-              const newTab = GM_openInTab(blobUrl, {
-                active: true,
-                insert: true
-              });
-              
-              // Clean up blob URL after a delay
-              setTimeout(() => {
-                URL.revokeObjectURL(blobUrl);
-              }, 5000);
-              
-              resolve({ id: Date.now(), url: blobUrl });
+            );
+          } else {
+            console.log('[BatchLabelPrinter] Have tabs API access, creating tab directly');
+            
+            // We're in a context with chrome.tabs access
+            chrome.tabs.create({ url: this.labelPrinterUrl }, (tab) => {
+              if (chrome.runtime.lastError) {
+                console.error('[BatchLabelPrinter] Tab creation error:', chrome.runtime.lastError);
+                reject(new Error(chrome.runtime.lastError.message));
+              } else {
+                console.log('[BatchLabelPrinter] Tab created successfully:', tab.id);
+                resolve(tab);
+              }
             });
-          } catch (error) {
-            console.error('[BatchLabelPrinter] Error opening label printer:', error);
-            reject(error);
           }
         });
-      }
-      
-      generateLabelPrinterHTML(labelData) {
-        const labelsHTML = labelData.labels.map(label => `
-          <div class="label-item">
-            <div class="logo-container">
-              ${label.logoUrl ? `<img src="${label.logoUrl}" alt="${label.restaurant}">` : ''}
-            </div>
-            <div class="text-container">
-              <div class="item-name-prominent">${label.itemName}</div>
-              ${label.itemSize ? `<div class="item-size">${label.itemSize}</div>` : ''}
-              <div class="customer-name">${label.customerName}</div>
-              ${label.itemNotes && label.itemNotes.length > 0 ? 
-                `<div class="item-notes">${label.itemNotes.join(' • ')}</div>` : ''}
-            </div>
-          </div>
-        `).join('');
-        
-        return `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Print Labels - ${labelData.batchName}</title>
-    <style>
-      body {
-        margin: 0;
-        padding: 20px;
-        font-family: Arial, sans-serif;
-      }
-      
-      .label-sheet {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        grid-template-rows: repeat(10, 1fr);
-        gap: 0;
-        width: 8.5in;
-        height: 11in;
-        margin: 0 auto;
-        page-break-after: always;
-      }
-      
-      .label-item {
-        width: 2.625in;
-        height: 1in;
-        padding: 0.125in;
-        box-sizing: border-box;
-        display: flex;
-        align-items: center;
-        overflow: hidden;
-        border: 1px dashed #ccc;
-      }
-      
-      .logo-container {
-        width: 0.75in;
-        height: 0.75in;
-        margin-right: 0.125in;
-        flex-shrink: 0;
-      }
-      
-      .logo-container img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-      }
-      
-      .text-container {
-        flex: 1;
-        overflow: hidden;
-      }
-      
-      .item-name-prominent {
-        font-size: 11pt;
-        font-weight: bold;
-        line-height: 1.2;
-        margin-bottom: 2px;
-      }
-      
-      .item-size {
-        font-size: 9pt;
-        color: #666;
-        margin-bottom: 2px;
-      }
-      
-      .customer-name {
-        font-size: 10pt;
-        color: #333;
-        margin-bottom: 2px;
-      }
-      
-      .item-notes {
-        font-size: 8pt;
-        color: #666;
-        font-style: italic;
-      }
-      
-      @media print {
-        body {
-          margin: 0;
-          padding: 0;
-        }
-        
-        .label-sheet {
-          page-break-after: always;
-        }
-        
-        .label-item {
-          border: none;
-        }
-        
-        .no-print {
-          display: none !important;
-        }
-      }
-      
-      .controls {
-        text-align: center;
-        margin-bottom: 20px;
-      }
-      
-      .controls button {
-        padding: 10px 20px;
-        font-size: 16px;
-        margin: 0 10px;
-        cursor: pointer;
-      }
-      
-      .print-btn {
-        background: #4CAF50;
-        color: white;
-        border: none;
-        border-radius: 5px;
-      }
-      
-      .close-btn {
-        background: #f44336;
-        color: white;
-        border: none;
-        border-radius: 5px;
-      }
-    </style>
-</head>
-<body>
-    <div class="controls no-print">
-      <h2>Label Preview - ${labelData.batchName}</h2>
-      <p>${labelData.labels.length} labels ready to print</p>
-      <button class="print-btn" onclick="window.print()">🖨️ Print Labels</button>
-      <button class="close-btn" onclick="window.close()">❌ Close</button>
-    </div>
-    
-    <div class="label-sheet">
-      ${labelsHTML}
-    </div>
-    
-    <script>
-      // Auto-print if requested
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('autoprint') === 'true') {
-        setTimeout(() => {
-          window.print();
-        }, 1000);
-      }
-    </script>
-</body>
-</html>
-        `;
       }
     
       /**
@@ -8120,574 +7781,12 @@ body {
         console.log('[ReactDataExtractor] Injecting page context script...');
         
         const script = document.createElement('script');
-        script.textContent = `
-// This script is injected into the page context to access React internals directly
-// It communicates with the content script via custom events
-
-(function() {
-  console.log('[PageContextExtractor] Injected into page context');
-  
-  // Check if React is ready on the page
-  function isReactReady() {
-    const orderRows = document.querySelectorAll('[data-testid="order-row"]');
-    if (orderRows.length === 0) return false;
-    
-    // Check if at least one row has React fiber
-    for (const row of orderRows) {
-      const keys = Object.keys(row);
-      const hasReactFiber = keys.some(k => 
-        k.startsWith('__reactFiber$') || 
-        k.startsWith('__reactInternalInstance$') ||
-        k.startsWith('__react')
-      );
-      if (hasReactFiber) return true;
-    }
-    
-    return false;
-  }
-  
-  // Function to extract orders from React (runs in page context)
-  // Based on user's working function that finds data at depth 2
-  function extractOrdersFromReact() {
-    console.log('[PageContextExtractor] Starting React extraction in page context');
-    
-    const orderRows = document.querySelectorAll('[data-testid="order-row"]');
-    console.log(\`[PageContextExtractor] Found \${orderRows.length} order rows\`);
-    
-    if (orderRows.length === 0) {
-      console.log('[PageContextExtractor] No order rows found');
-      return [];
-    }
-    
-    const orders = [];
-    
-    orderRows.forEach((row, index) => {
-      console.log(\`\\n--- Extracting Order \${index} ---\`);
-      try {
-        // Get all properties of the element
-        const keys = Object.keys(row);
-        console.log(\`Row \${index} keys:\`, keys);
-        
-        // Find React fiber keys - match any React internal key pattern
-        const reactKeys = keys.filter(k => 
-          k.startsWith('__react') ||
-          k.startsWith('__reactFiber$') ||
-          k.startsWith('__reactInternalInstance$')
-        );
-        console.log(\`Row \${index} React keys found:\`, reactKeys);
-        
-        if (reactKeys.length === 0) {
-          console.log(\`No React keys found on row \${index}\`);
-          return;
-        }
-        
-        // Get the first React fiber key (matching user's approach)
-        const fiber = row[reactKeys[0]];
-        if (!fiber) {
-          console.log(\`No fiber found for row \${index}\`);
-          return;
-        }
-        
-        // Navigate up the fiber tree - user's function finds data at depth 2
-        let current = fiber;
-        let depth = 0;
-        let orderData = null;
-        
-        // Look for order prop at various depths (matching user's working function)
-        while (current && depth < 10) {
-          console.log(\`Depth \${depth}: checking memoizedProps...\`, current.memoizedProps ? Object.keys(current.memoizedProps) : 'no memoizedProps');
-          
-          if (current.memoizedProps && current.memoizedProps.order) {
-            orderData = current.memoizedProps.order;
-            console.log(\`Found order data at depth \${depth}!\`);
-            break;
-          }
-          current = current.return;
-          depth++;
-        }
-        
-        if (orderData) {
-          console.log('Order object:', orderData);
-          
-          // Check if orderData has customerOrder property (the actual API structure)
-          const hasCustomerOrder = orderData.customerOrder && typeof orderData.customerOrder === 'object';
-          const co = hasCustomerOrder ? orderData.customerOrder : orderData;
-          
-          console.log('Has customerOrder property:', hasCustomerOrder);
-          
-          // Extract order ID - it's at customerOrder.orderId.id
-          let orderId = 'unknown';
-          if (co.orderId && co.orderId.id) {
-            orderId = co.orderId.id;
-          } else if (co.id) {
-            orderId = typeof co.id === 'object' && co.id.id ? co.id.id : co.id;
-          }
-          console.log('Order ID:', orderId);
-          
-          // Extract order number from orderIdentifier.displayId
-          let orderNumber = 'unknown';
-          if (co.orderIdentifier && co.orderIdentifier.displayId) {
-            orderNumber = co.orderIdentifier.displayId;
-          } else if (co.externalOrderIdentifier && co.externalOrderIdentifier.displayId) {
-            orderNumber = co.externalOrderIdentifier.displayId;
-          } else if (co.externalOrderId && co.externalOrderId.displayId) {
-            orderNumber = co.externalOrderId.displayId;
-          } else if (orderData.orderNumber) {
-            orderNumber = orderData.orderNumber;
-          } else if (orderData.displayId) {
-            orderNumber = orderData.displayId;
-          }
-          console.log('Order Number:', orderNumber);
-          
-          // Extract restaurant/store name
-          let restaurantName = 'Unknown Restaurant';
-          if (co.store && co.store.name) {
-            restaurantName = co.store.name;
-          } else if (co.storeName) {
-            restaurantName = co.storeName;
-          } else if (co.brand && co.brand.name) {
-            restaurantName = co.brand.name;
-          } else if (co.brandName) {
-            restaurantName = co.brandName;
-          } else if (co.merchant && co.merchant.name) {
-            restaurantName = co.merchant.name;
-          } else if (co.merchantName) {
-            restaurantName = co.merchantName;
-          } else if (co.restaurant && co.restaurant.name) {
-            restaurantName = co.restaurant.name;
-          } else if (co.restaurantName) {
-            restaurantName = co.restaurantName;
-          }
-          console.log('Restaurant:', restaurantName);
-          
-          // Extract order status/state
-          let orderStatus = 'UNKNOWN';
-          if (co.state) {
-            orderStatus = co.state;
-          } else if (co.status) {
-            orderStatus = co.status;
-          } else if (co.orderState) {
-            orderStatus = co.orderState;
-          } else if (co.order && co.order.state) {
-            orderStatus = co.order.state;
-          } else if (orderData.state) {
-            orderStatus = orderData.state;
-          } else if (orderData.status) {
-            orderStatus = orderData.status;
-          }
-          console.log('Order Status:', orderStatus);
-          
-          // Extract orderedAt timestamp
-          let orderedAt = null;
-          if (co.orderedAt) {
-            orderedAt = co.orderedAt;
-          } else if (co.createdAt) {
-            orderedAt = co.createdAt;
-          } else if (co.timestamp) {
-            orderedAt = co.timestamp;
-          } else if (co.orderDate) {
-            orderedAt = co.orderDate;
-          } else if (orderData.orderedAt) {
-            orderedAt = orderData.orderedAt;
-          } else if (orderData.createdAt) {
-            orderedAt = orderData.createdAt;
-          }
-          console.log('Ordered At:', orderedAt);
-          
-          // Extract customer name from customer.displayName
-          let customerName = 'Unknown';
-          if (co.customer && co.customer.displayName) {
-            customerName = co.customer.displayName;
-          } else if (co.customer && (co.customer.firstName || co.customer.lastName)) {
-            customerName = \`\${co.customer.firstName || ''} \${co.customer.lastName || ''}\`.trim();
-          } else if (orderData.customerName) {
-            customerName = orderData.customerName;
-          } else if (orderData.customer && orderData.customer.name) {
-            customerName = orderData.customer.name;
-          }
-          console.log('Customer:', customerName);
-          
-          // Extract order notes/instructions that might contain recipient names
-          let orderNotes = '';
-          let recipientName = '';
-          
-          // Check various possible locations for notes
-          const noteSources = [
-            co.deliveryInstructions,
-            co.specialInstructions,
-            co.notes,
-            co.customerNotes,
-            co.orderNotes,
-            co.deliveryNotes,
-            co.customer?.notes,
-            co.additionalInfo,
-            co.instructions,
-            co.recipientNotes
-          ];
-          
-          for (const source of noteSources) {
-            if (source && typeof source === 'string' && source.trim()) {
-              orderNotes = source.trim();
-              console.log('Found order notes:', orderNotes);
-              break;
-            }
-          }
-          
-          // Try to extract recipient name from notes if they follow common patterns
-          if (orderNotes) {
-            // Common patterns: "For: Name", "Deliver to: Name", "Name:", "To: Name"
-            const namePatterns = [
-              /(?:for|deliver to|to|name):\\s*([^,\\n]+)/i,
-              /^([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*)\\s*$/m, // Name on its own line
-              /(?:pick\\s*up|pickup).*?([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*)/i
-            ];
-            
-            for (const pattern of namePatterns) {
-              const match = orderNotes.match(pattern);
-              if (match && match[1]) {
-                recipientName = match[1].trim();
-                console.log('Extracted recipient name from notes:', recipientName);
-                break;
-              }
-            }
-          }
-          
-          // Extract wait time if available
-          let waitTime = 0;
-          if (co.confirmationInfo && co.confirmationInfo.estimatedPrepTimeMinutes) {
-            waitTime = co.confirmationInfo.estimatedPrepTimeMinutes;
-          } else if (co.stationOrders && co.stationOrders[0] && co.stationOrders[0].stationPrepInfo) {
-            // Extract from estimatedPrepTime (format: "516.281372784s")
-            const prepTimeStr = co.stationOrders[0].stationPrepInfo.estimatedPrepTime;
-            if (prepTimeStr && prepTimeStr.endsWith('s')) {
-              const seconds = parseFloat(prepTimeStr.slice(0, -1));
-              waitTime = Math.round(seconds / 60); // Convert to minutes
-            }
-          }
-          
-          // Extract items from customerItemsContainer if available
-          const items = [];
-          if (co.customerItemsContainer) {
-            console.log('Found customerItemsContainer!');
-            const itemsArray = co.customerItemsContainer.items || [];
-            const modifiersMap = co.customerItemsContainer.modifiers || {};
-            
-            console.log(\`Processing \${itemsArray.length} items with modifiers map\`);
-            console.log(\`Modifiers map has \${Object.keys(modifiersMap).length} entries\`);
-            
-            // Debug: Log first few modifiers to see their structure
-            const modifierKeys = Object.keys(modifiersMap);
-            if (modifierKeys.length > 0) {
-              console.log(\`[MODIFIER MAP SAMPLE] First modifier:\`, {
-                id: modifierKeys[0],
-                data: modifiersMap[modifierKeys[0]]
-              });
-            }
-            
-            // Also get modifiers from stationOrders for section names
-            let stationModifiers = {};
-            if (co.stationOrders && co.stationOrders[0] && 
-                co.stationOrders[0].menuReconciledItemsContainer &&
-                co.stationOrders[0].menuReconciledItemsContainer.modifiers) {
-              stationModifiers = co.stationOrders[0].menuReconciledItemsContainer.modifiers;
-            }
-            
-            itemsArray.forEach((item, idx) => {
-              if (item.orderItemDetail) {
-                const itemDetail = item.orderItemDetail;
-                const itemName = itemDetail.name || 'Unknown Item';
-                const quantity = itemDetail.quantity || 1;
-                let itemNote = '';
-                
-                // Extract item-level note if available
-                if (itemDetail.note) {
-                  itemNote = itemDetail.note;
-                  console.log(\`Found note for \${itemName}: \${itemNote}\`);
-                }
-                
-                let size = 'no-size';
-                let sizeModifiers = []; // Collect ALL size-related modifiers
-                const additionalItems = []; // Track items that should be extracted separately
-                
-                // Check if Urban Bowl first
-                if (itemName.toLowerCase().includes('urban bowl')) {
-                  size = 'urban';
-                  console.log(\`Detected Urban Bowl: \${itemName} - set size to 'urban'\`);
-                }
-                
-                // Look for size in modifiers
-                console.log(\`Item has modifierCustomerItemIds: \${!!item.modifierCustomerItemIds}, count: \${item.modifierCustomerItemIds ? item.modifierCustomerItemIds.length : 0}\`);
-                if (item.modifierCustomerItemIds && size !== 'urban') {
-                  console.log(\`Checking \${item.modifierCustomerItemIds.length} modifiers for \${itemName}\`);
-                  
-                  item.modifierCustomerItemIds.forEach(modId => {
-                    const modifier = modifiersMap[modId];
-                    const stationMod = stationModifiers[modId];
-                    
-                    console.log(\`Checking modifier ID \${modId}, found in map: \${!!modifier}\`);
-                    
-                    // Check if this is an additional item based on section
-                    if (stationMod && stationMod.sectionName) {
-                      const sectionName = stationMod.sectionName.toLowerCase();
-                      const modName = stationMod.stationItemDetail ? 
-                        stationMod.stationItemDetail.name : 
-                        (modifier && modifier.orderItemDetail ? modifier.orderItemDetail.name : '');
-                      
-                      console.log(\`  Station modifier section: \${stationMod.sectionName}, item: \${modName}\`);
-                      
-                      // Check if this should be a separate item
-                      if (sectionName.includes('add') || 
-                          sectionName.includes('side') || 
-                          sectionName.includes('drink') || 
-                          sectionName.includes('dessert') ||
-                          sectionName.includes('bao-nut') ||
-                          modName.toLowerCase().includes('bao-nut') ||
-                          modName.toLowerCase().includes('tea') ||
-                          modName.toLowerCase().includes('cinnamon sugar')) {
-                        // This is an additional item, not a size modifier
-                        if (modName) {
-                          additionalItems.push(modName);
-                          console.log(\`  Marked as additional item: "\${modName}"\`);
-                        }
-                      } else {
-                        // This is a size modifier
-                        if (modName && !sizeModifiers.includes(modName)) {
-                          sizeModifiers.push(modName);
-                          console.log(\`  Added as size modifier: "\${modName}"\`);
-                        }
-                      }
-                    } else if (modifier && modifier.orderItemDetail) {
-                      const modName = modifier.orderItemDetail.name || '';
-                      const modNameLower = modName.toLowerCase();
-                      console.log(\`  Modifier name: "\${modName}"\`);
-                      
-                      // Only add as size modifier if it's actually about size/rice
-                      if (modNameLower.includes('small') || 
-                          modNameLower.includes('large') || 
-                          modNameLower.includes('rice') || 
-                          modNameLower.includes('noodle')) {
-                        sizeModifiers.push(modName);
-                        console.log(\`Added to size modifiers: \${modName}\`);
-                      } else {
-                        // Otherwise it might be an additional item
-                        additionalItems.push(modName);
-                        console.log(\`Added as additional item: \${modName}\`);
-                      }
-                    }
-                  });
-                  
-                  // Process collected modifiers to determine size
-                  console.log(\`Collected size modifiers for \${itemName}:\`, sizeModifiers);
-                  
-                  if (sizeModifiers.length > 0) {
-                    // Look for base size first
-                    const baseSize = sizeModifiers.find(m => 
-                      m.toLowerCase() === 'small' || 
-                      m.toLowerCase() === 'large'
-                    );
-                    
-                    // Look for any rice/noodle substitution
-                    const substitution = sizeModifiers.find(m => {
-                      const lower = m.toLowerCase();
-                      return lower.includes('rice') || 
-                             lower.includes('noodle') || 
-                             lower.includes('stir fry');
-                    });
-                    
-                    if (baseSize && substitution) {
-                      // Combine them exactly as they are
-                      size = \`\${baseSize.toLowerCase()} - \${substitution.toLowerCase()}\`;
-                      console.log(\`Combined size: \${size}\`);
-                    } else if (baseSize) {
-                      // Just the base size
-                      size = baseSize.toLowerCase();
-                      console.log(\`Using base size: \${size}\`);
-                    } else if (sizeModifiers.length === 1) {
-                      // If we only have one modifier, use it as-is
-                      size = sizeModifiers[0].toLowerCase();
-                      console.log(\`Using single modifier as size: \${size}\`);
-                    } else {
-                      // Multiple modifiers but no clear base size - join them
-                      size = sizeModifiers.join(' - ').toLowerCase();
-                      console.log(\`Joining all modifiers: \${size}\`);
-                    }
-                  }
-                }
-                
-                items.push({
-                  name: itemName,
-                  quantity: quantity,
-                  size: size,
-                  note: itemNote,
-                  isRiceBowl: itemName.toLowerCase().includes('rice bowl'),
-                  isUrbanBowl: itemName.toLowerCase().includes('urban bowl')
-                });
-                
-                console.log(\`Item \${idx + 1}: \${itemName} (\${size}) x\${quantity}\`);
-                
-                // Add any additional items that were found
-                if (additionalItems && additionalItems.length > 0) {
-                  console.log(\`Adding \${additionalItems.length} additional items from modifiers\`);
-                  additionalItems.forEach(additionalItemName => {
-                    items.push({
-                      name: additionalItemName,
-                      quantity: 1,
-                      size: 'no-size'
-                    });
-                    console.log(\`Added additional item: \${additionalItemName}\`);
-                  });
-                }
-              }
-            });
-          } else {
-            // Try simpler structure from user's example
-            const simpleItems = co.items || co.orderItems || co.lineItems || [];
-            console.log(\`Found \${simpleItems.length} items in simple structure\`);
-            
-            simpleItems.forEach((item, idx) => {
-              const itemName = item.name || item.itemName || item.title || 'Unknown Item';
-              const quantity = item.quantity || item.qty || 1;
-              let size = item.size || item.variant || item.option || 'no-size';
-              const itemNote = item.note || item.notes || item.specialInstructions || '';
-              
-              // Check if Urban Bowl
-              if (itemName.toLowerCase().includes('urban bowl')) {
-                size = 'urban';
-              }
-              
-              items.push({
-                name: itemName,
-                quantity: quantity,
-                size: size,
-                note: itemNote,
-                isRiceBowl: itemName.toLowerCase().includes('rice bowl'),
-                isUrbanBowl: itemName.toLowerCase().includes('urban bowl')
-              });
-              
-              console.log(\`Item \${idx + 1}: \${itemName} (\${size}) x\${quantity}\`);
-            });
-          }
-          
-          const order = {
-            id: orderId,
-            customerName: customerName,
-            orderNumber: orderNumber,
-            waitTime: waitTime,
-            items: items,
-            orderNotes: orderNotes,
-            recipientName: recipientName || customerName, // Use recipient name if found, otherwise customer name
-            restaurantName: restaurantName,
-            orderStatus: orderStatus,
-            orderedAt: orderedAt,
-            source: hasCustomerOrder ? 'react-customerOrder' : 'react-simple'
-          };
-          
-          console.log('Created order object:', order);
-          console.log(\`Extracted \${items.length} items with sizes\`);
-          
-          // Store for later use
-          orders.push(order);
-          console.log(\`Successfully extracted order \${index}: \${orderNumber} (\${order.items.length} items)\`);
-          
-        } else {
-          console.log(\`No order data found for row \${index} after checking depths 0-10\`);
-        }
-      } catch (error) {
-        console.error(\`[PageContextExtractor] Error extracting row \${index}:\`, error);
-      }
-    });
-    
-    console.log(\`[PageContextExtractor] Extraction complete:\`, {
-      totalOrders: orders.length,
-      ordersWithItems: orders.filter(o => o.items.length > 0).length,
-      totalItems: orders.reduce((sum, o) => sum + o.items.length, 0)
-    });
-    
-    if (orders.length === 0) {
-      console.log('[PageContextExtractor] No valid orders found. Check console for debugging info.');
-    }
-    
-    return orders;
-  }
-  
-  // Listen for React ready check requests
-  window.addEventListener('otter-react-ready-check', function(e) {
-    console.log('[PageContextExtractor] React ready check requested');
-    const ready = isReactReady();
-    window.dispatchEvent(new CustomEvent('otter-react-ready-response', {
-      detail: { ready: ready }
-    }));
-  });
-
-  // Listen for extraction requests from content script
-  window.addEventListener('otter-extract-request', function(e) {
-    console.log('[PageContextExtractor] Received extraction request');
-    
-    try {
-      // Check if React is ready first
-      if (!isReactReady()) {
-        console.log('[PageContextExtractor] React not ready yet');
-        window.dispatchEvent(new CustomEvent('otter-extract-response', {
-          detail: {
-            success: false,
-            error: 'React not ready',
-            orders: [],
-            timestamp: Date.now()
-          }
-        }));
-        return;
-      }
-      
-      const orders = extractOrdersFromReact();
-      
-      // Debug: Check orders structure before sending
-      console.log('[PageContextExtractor] Orders before sending:', orders);
-      if (orders.length > 0) {
-        console.log('[PageContextExtractor] First order detail:', {
-          id: orders[0].id,
-          idType: typeof orders[0].id,
-          customerName: orders[0].customerName,
-          fullOrder: JSON.stringify(orders[0])
-        });
-      }
-      
-      // Send results back to content script
-      window.dispatchEvent(new CustomEvent('otter-extract-response', {
-        detail: {
-          success: true,
-          orders: orders,
-          timestamp: Date.now()
-        }
-      }));
-    } catch (error) {
-      console.error('[PageContextExtractor] Extraction error:', error);
-      
-      window.dispatchEvent(new CustomEvent('otter-extract-response', {
-        detail: {
-          success: false,
-          error: error.message,
-          timestamp: Date.now()
-        }
-      }));
-    }
-  });
-  
-  // Also expose functions globally for debugging
-  window.__otterExtractOrders = extractOrdersFromReact;
-  window.__otterIsReactReady = isReactReady;
-  
-  console.log('[PageContextExtractor] Ready. Available functions:');
-  console.log('  - window.__otterExtractOrders() - Extract orders');
-  console.log('  - window.__otterIsReactReady() - Check if React is ready');
-})();
-        `;
-        
+        script.src = chrome.runtime.getURL('content/pageContextExtractor.js');
         script.onload = () => {
           console.log('[ReactDataExtractor] Page context script loaded');
           this.pageContextInjected = true;
         };
         (document.head || document.documentElement).appendChild(script);
-        this.pageContextInjected = true; // Mark as injected immediately since it's inline
       }
       
       // Extract orders using page context (main method)
@@ -11604,9 +10703,6 @@ body {
           throw new Error('Overlay element was not created');
         }
         
-        // Start prep time update interval
-        this.startPrepTimeUpdateInterval();
-        
         // Force visibility
         this.overlayElement.style.display = 'flex';
         console.log('Overlay created and visible');
@@ -12769,15 +11865,12 @@ body {
       
       updatePrepTimeStats() {
         if (!window.otterPrepTimeTracker) {
-          console.log('[OverlayUI] PrepTimeTracker not available');
           return;
         }
         
         try {
           const lastHour = window.otterPrepTimeTracker.getLastHourAverage();
           const today = window.otterPrepTimeTracker.getTodayAverage();
-          
-          console.log('[OverlayUI] Prep time stats:', { lastHour, today });
           
           const hourElement = this.overlayElement.querySelector('.prep-time-hour');
           const todayElement = this.overlayElement.querySelector('.prep-time-today');
@@ -12804,20 +11897,6 @@ body {
         } catch (error) {
           console.error('[OverlayUI] Error updating prep time stats:', error);
         }
-      }
-      
-      startPrepTimeUpdateInterval() {
-        // Update prep time stats every 30 seconds
-        if (this.prepTimeInterval) {
-          clearInterval(this.prepTimeInterval);
-        }
-        
-        this.prepTimeInterval = setInterval(() => {
-          this.updatePrepTimeStats();
-        }, 30000); // 30 seconds
-        
-        // Also update immediately
-        this.updatePrepTimeStats();
       }
       
       updateAPIStatus() {
@@ -15023,41 +14102,6 @@ body {
         return 'Could not find sidebar';
       },
     
-      // Manually mark an order as completed for testing
-      testMarkOrderCompleted(orderId) {
-        console.log(`[Debug] Manually marking order ${orderId} as completed`);
-        
-        // Find the order across all batches
-        for (const batch of window.otterOverlayUI.batchManager.batches) {
-          if (batch.orders.has(orderId)) {
-            const order = batch.orders.get(orderId);
-            if (!order.completed) {
-              window.otterOverlayUI.batchManager.markOrderCompleted(orderId);
-              console.log(`[Debug] Order ${orderId} marked as completed`);
-              return true;
-            } else {
-              console.log(`[Debug] Order ${orderId} was already completed`);
-              return false;
-            }
-          }
-        }
-        
-        console.log(`[Debug] Order ${orderId} not found in any batch`);
-        return false;
-      },
-      
-      // Get prep time stats for debugging
-      getPrepTimeStats() {
-        if (!window.otterPrepTimeTracker) {
-          console.log('[Debug] PrepTimeTracker not available');
-          return null;
-        }
-        
-        const stats = window.otterPrepTimeTracker.getStatistics();
-        console.log('[Debug] Prep Time Statistics:', stats);
-        return stats;
-      },
-      
       // Search DOM for hidden data
       findHiddenData() {
         console.log('=== SEARCHING FOR HIDDEN ORDER DATA ===');
@@ -15719,39 +14763,29 @@ body {
       // Create components immediately
       async function createComponents() {
         try {
-          console.log('[createComponents] Starting component creation...');
-          console.log('[createComponents] Current globals:', {
-            ItemMatcher: typeof window.ItemMatcher,
-            OrderBatcher: typeof window.OrderBatcher,
-            CategoryManager: typeof window.CategoryManager,
-            BatchManager: typeof window.BatchManager,
-            OrderExtractor: typeof window.OrderExtractor,
-            OverlayUI: typeof window.OverlayUI
-          });
-          
           console.log('Creating ItemMatcher...');
-          if (typeof ItemMatcher === 'undefined' && typeof window.ItemMatcher === 'undefined') {
+          if (typeof ItemMatcher === 'undefined') {
             throw new Error('ItemMatcher not loaded');
           }
-          itemMatcher = new (window.ItemMatcher || ItemMatcher)();
+          itemMatcher = new ItemMatcher();
           
           console.log('Creating OrderBatcher...');
-          if (typeof OrderBatcher === 'undefined' && typeof window.OrderBatcher === 'undefined') {
+          if (typeof OrderBatcher === 'undefined') {
             throw new Error('OrderBatcher not loaded');
           }
-          orderBatcher = new (window.OrderBatcher || OrderBatcher)(itemMatcher);
+          orderBatcher = new OrderBatcher(itemMatcher);
           
           console.log('Creating CategoryManager...');
-          if (typeof CategoryManager === 'undefined' && typeof window.CategoryManager === 'undefined') {
+          if (typeof CategoryManager === 'undefined') {
             throw new Error('CategoryManager not loaded');
           }
-          categoryManager = new (window.CategoryManager || CategoryManager)();
+          categoryManager = new CategoryManager();
           
           console.log('Creating BatchManager...');
-          if (typeof BatchManager === 'undefined' && typeof window.BatchManager === 'undefined') {
+          if (typeof BatchManager === 'undefined') {
             throw new Error('BatchManager not loaded');
           }
-          batchManager = new (window.BatchManager || BatchManager)();
+          batchManager = new BatchManager();
           
           // Set up batch event callbacks
           batchManager.onNewBatchCreated = (batch) => {
@@ -15766,23 +14800,23 @@ body {
           console.log('Categories loaded');
           
           console.log('Creating OrderExtractor...');
-          if (typeof OrderExtractor === 'undefined' && typeof window.OrderExtractor === 'undefined') {
+          if (typeof OrderExtractor === 'undefined') {
             throw new Error('OrderExtractor not loaded');
           }
-          orderExtractor = new (window.OrderExtractor || OrderExtractor)(categoryManager);
+          orderExtractor = new OrderExtractor(categoryManager);
           
           console.log('Creating PrepTimeTracker...');
-          if (typeof PrepTimeTracker === 'undefined' && typeof window.PrepTimeTracker === 'undefined') {
+          if (typeof PrepTimeTracker === 'undefined') {
             throw new Error('PrepTimeTracker not loaded');
           }
-          prepTimeTracker = new (window.PrepTimeTracker || PrepTimeTracker)();
+          prepTimeTracker = new PrepTimeTracker();
           window.otterPrepTimeTracker = prepTimeTracker; // Make globally accessible
           
           console.log('Creating OverlayUI...');
-          if (typeof OverlayUI === 'undefined' && typeof window.OverlayUI === 'undefined') {
+          if (typeof OverlayUI === 'undefined') {
             throw new Error('OverlayUI not loaded');
           }
-          overlayUI = new (window.OverlayUI || OverlayUI)(orderBatcher, categoryManager, batchManager, orderExtractor);
+          overlayUI = new OverlayUI(orderBatcher, categoryManager, batchManager, orderExtractor);
           
           // Make overlayUI globally accessible for debugging
           window.otterOverlayUI = overlayUI;
@@ -15802,14 +14836,8 @@ body {
         }
       }
       
-      // Track component readiness globally
-      window.otterComponentsReady = false;
-      
       // Create components early
       createComponents().then(() => {
-        console.log('[Components] All components created successfully!');
-        window.otterComponentsReady = true;
-        
         // Initialize authentication UI after components are created
         console.log('Initializing authentication UI...');
         if (window.otterAuthUI) {
@@ -15817,12 +14845,6 @@ body {
         } else {
           console.error('Auth UI not loaded');
         }
-      }).catch(error => {
-        console.error('[CRITICAL] Failed to create components:', error);
-        console.error('Stack trace:', error.stack);
-        // Store error globally for debugging
-        window.componentsError = error;
-        window.otterComponentsReady = false;
       });
       
       let isInitialized = false;
@@ -15951,28 +14973,6 @@ body {
         }
         
         console.log('[init] Starting initialization...');
-        
-        // Wait for components to be ready
-        if (!window.otterComponentsReady) {
-          console.log('[init] Components not ready yet, waiting...');
-          
-          // Wait up to 10 seconds for components
-          let waited = 0;
-          while (!window.otterComponentsReady && waited < 10000) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            waited += 100;
-          }
-          
-          if (!window.otterComponentsReady) {
-            console.error('[init] Components failed to initialize after 10 seconds');
-            if (window.componentsError) {
-              throw window.componentsError;
-            }
-            throw new Error('Components initialization timeout');
-          }
-        }
-        
-        console.log('[init] Components ready, proceeding...');
         console.log('[init] Available components at start:', {
           networkMonitor: !!window.otterNetworkMonitor,
           orderCache: !!window.otterOrderCache,
@@ -16711,4 +15711,5 @@ body {
       }).observe(document, { subtree: true, childList: true });
     })();
 
+    
 })();
