@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition (Fixed)
 // @namespace    http://tampermonkey.net/
-// @version      4.2.0
+// @version      4.3.0
 // @description  Consolidate orders and print batch labels for Otter (Tablet Compatible)
 // @author       Your Name
 // @match        https://app.tryotter.com/*
@@ -5254,15 +5254,26 @@ body {
         // FIFO batching - no time-based assignment
         // Orders stay in their original batch
         
-        this.loadSettings();
-        this.loadOrderTimestamps();
-        this.loadOrderStatuses();
         this.initializeBatches();
+        
+        // Load settings and data asynchronously
+        this.loadDataAsync();
       }
       
       initializeBatches() {
         // Create first batch
         this.createNewBatch();
+      }
+      
+      async loadDataAsync() {
+        try {
+          await this.loadSettings();
+          await this.loadOrderTimestamps();
+          await this.loadOrderStatuses();
+          console.log('[BatchManager] All data loaded successfully');
+        } catch (error) {
+          console.error('[BatchManager] Error loading data:', error);
+        }
       }
       
       get currentBatch() {
@@ -5461,32 +5472,42 @@ body {
       }
       
       async loadSettings() {
-        const settings = await Storage.get('settings');
-        if (settings && settings.maxBatchCapacity) {
-          this.maxBatchCapacity = settings.maxBatchCapacity;
-        } else if (settings && settings.maxWaveCapacity) {
-          // Backward compatibility
-          this.maxBatchCapacity = settings.maxWaveCapacity;
+        try {
+          // Use GM storage instead of Chrome storage
+          const settings = await Promise.resolve(GM_getValue('settings'));
+          if (settings && settings.maxBatchCapacity) {
+            this.maxBatchCapacity = settings.maxBatchCapacity;
+          } else if (settings && settings.maxWaveCapacity) {
+            // Backward compatibility
+            this.maxBatchCapacity = settings.maxWaveCapacity;
+          }
+          // Don't update existing batches - only affects new batches
+        } catch (error) {
+          console.error('[BatchManager] Error loading settings:', error);
+          // Use default value on error
+          this.maxBatchCapacity = 5;
         }
-        // Don't update existing batches - only affects new batches
       }
       
       async loadOrderTimestamps() {
         try {
-          const stored = await GM_getValue('orderTimestamps');
+          // GM_getValue might not be async in some versions
+          const stored = await Promise.resolve(GM_getValue('orderTimestamps'));
           if (stored && typeof stored === 'object') {
             this.orderTimestamps = new Map(Object.entries(stored));
             console.log(`[BatchManager] Loaded ${this.orderTimestamps.size} order timestamps`);
           }
         } catch (error) {
           console.error('[BatchManager] Error loading order timestamps:', error);
+          // Initialize with empty map on error
+          this.orderTimestamps = new Map();
         }
       }
       
       async saveOrderTimestamps() {
         try {
           const data = Object.fromEntries(this.orderTimestamps);
-          await GM_setValue('orderTimestamps', data);
+          await Promise.resolve(GM_setValue('orderTimestamps', data));
         } catch (error) {
           console.error('[BatchManager] Error saving order timestamps:', error);
         }
@@ -5503,20 +5524,23 @@ body {
       
       async loadOrderStatuses() {
         try {
-          const stored = await GM_getValue('orderStatuses');
+          // GM_getValue might not be async in some versions
+          const stored = await Promise.resolve(GM_getValue('orderStatuses'));
           if (stored && typeof stored === 'object') {
             this.orderStatuses = new Map(Object.entries(stored));
             console.log(`[BatchManager] Loaded ${this.orderStatuses.size} order statuses`);
           }
         } catch (error) {
           console.error('[BatchManager] Error loading order statuses:', error);
+          // Initialize with empty map on error
+          this.orderStatuses = new Map();
         }
       }
       
       async saveOrderStatuses() {
         try {
           const data = Object.fromEntries(this.orderStatuses);
-          await GM_setValue('orderStatuses', data);
+          await Promise.resolve(GM_setValue('orderStatuses', data));
         } catch (error) {
           console.error('[BatchManager] Error saving order statuses:', error);
         }
