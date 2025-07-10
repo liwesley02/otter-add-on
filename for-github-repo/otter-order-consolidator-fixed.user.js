@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition (Fixed)
 // @namespace    http://tampermonkey.net/
-// @version      4.1.1
+// @version      4.2.0
 // @description  Consolidate orders and print batch labels for Otter (Tablet Compatible)
 // @author       Your Name
 // @match        https://app.tryotter.com/*
@@ -26,196 +26,6 @@
 
 (function() {
     'use strict';
-    
-    // Show immediate visual feedback
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.id = 'otter-loading-indicator';
-    loadingIndicator.innerHTML = '🔄 Otter Consolidator Loading...';
-    loadingIndicator.style.cssText = `
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        background: #ff6b6b;
-        color: white;
-        padding: 10px 15px;
-        border-radius: 5px;
-        font-family: Arial, sans-serif;
-        font-size: 14px;
-        z-index: 999999;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    `;
-    
-    // Wait for body to be available
-    function addIndicator() {
-        if (document.body) {
-            document.body.appendChild(loadingIndicator);
-            
-            // Add a simple button to manually trigger the consolidator
-            const triggerBtn = document.createElement('button');
-            triggerBtn.innerHTML = '📦 Open Consolidator';
-            triggerBtn.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                background: #4CAF50;
-                color: white;
-                border: none;
-                padding: 15px 20px;
-                border-radius: 50px;
-                font-size: 16px;
-                font-weight: bold;
-                cursor: pointer;
-                z-index: 999999;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            `;
-            triggerBtn.onclick = async () => {
-                loadingIndicator.innerHTML = '⚡ Initializing...';
-                loadingIndicator.style.background = '#ff9800';
-                
-                // Ensure components are created first
-                if (!window.ItemMatcher || !window.OrderBatcher || !window.CategoryManager) {
-                    console.log('[Button Click] Components not ready, waiting...');
-                    loadingIndicator.innerHTML = '⏳ Loading components...';
-                    
-                    // Wait a bit for components to load
-                    let retries = 0;
-                    const checkInterval = setInterval(() => {
-                        retries++;
-                        if (window.ItemMatcher && window.OrderBatcher && window.CategoryManager) {
-                            clearInterval(checkInterval);
-                            console.log('[Button Click] Components are now ready!');
-                            triggerBtn.click(); // Retry the click
-                        } else if (retries > 20) { // 10 seconds timeout
-                            clearInterval(checkInterval);
-                            loadingIndicator.innerHTML = '❌ Components failed to load';
-                            console.error('Components still not available after 10 seconds');
-                        }
-                    }, 500);
-                    return;
-                }
-                
-                // Create a simple overlay if init fails
-                setTimeout(() => {
-                    try {
-                        // Try to create the overlay directly
-                        let overlay = document.getElementById('otter-consolidator-overlay');
-                        if (!overlay) {
-                            overlay = document.createElement('div');
-                            overlay.id = 'otter-consolidator-overlay';
-                            overlay.style.cssText = `
-                                position: fixed;
-                                top: 0;
-                                right: 0;
-                                width: 400px;
-                                height: 100vh;
-                                background: white;
-                                box-shadow: -2px 0 10px rgba(0,0,0,0.2);
-                                z-index: 999998;
-                                overflow-y: auto;
-                                padding: 20px;
-                            `;
-                            overlay.innerHTML = `
-                                <h2 style="margin-top:0">Order Consolidator</h2>
-                                <p style="color:#666">Manual mode - Click Extract Orders below</p>
-                                <button id="extract-orders-btn" style="
-                                    background: #4CAF50;
-                                    color: white;
-                                    border: none;
-                                    padding: 10px 20px;
-                                    border-radius: 5px;
-                                    font-size: 16px;
-                                    cursor: pointer;
-                                    width: 100%;
-                                    margin: 10px 0;
-                                ">📦 Extract Orders</button>
-                                <button id="close-overlay-btn" style="
-                                    background: #f44336;
-                                    color: white;
-                                    border: none;
-                                    padding: 10px 20px;
-                                    border-radius: 5px;
-                                    font-size: 16px;
-                                    cursor: pointer;
-                                    width: 100%;
-                                ">❌ Close</button>
-                                <div id="order-results" style="margin-top:20px"></div>
-                            `;
-                            document.body.appendChild(overlay);
-                            
-                            // Add functionality
-                            document.getElementById('close-overlay-btn').onclick = () => {
-                                overlay.remove();
-                                loadingIndicator.innerHTML = '✅ Closed';
-                            };
-                            
-                            document.getElementById('extract-orders-btn').onclick = () => {
-                                const results = document.getElementById('order-results');
-                                results.innerHTML = '<p>Searching for orders...</p>';
-                                
-                                // Simple order extraction
-                                const orderElements = document.querySelectorAll('[data-testid*="order"], [class*="order-card"], [class*="OrderCard"]');
-                                results.innerHTML = `<p>Found ${orderElements.length} potential orders</p>`;
-                                
-                                if (orderElements.length === 0) {
-                                    results.innerHTML += '<p style="color:red">No orders found. Make sure you are on the orders page.</p>';
-                                }
-                            };
-                            
-                            loadingIndicator.innerHTML = '✅ Overlay Open';
-                            loadingIndicator.style.background = '#4CAF50';
-                        }
-                        
-                        // Also try the real init
-                        if (window.init) {
-                            console.log('[Button Click] Attempting to call window.init()...');
-                            window.init().catch(err => {
-                                console.error('Init failed:', err);
-                                console.error('Init error stack:', err.stack);
-                                loadingIndicator.innerHTML = '⚠️ Using Manual Mode';
-                                
-                                // Check if components were created successfully
-                                if (window.componentsError) {
-                                    console.error('Components creation had failed earlier:', window.componentsError);
-                                    loadingIndicator.innerHTML = '❌ Components Error';
-                                }
-                            });
-                        } else {
-                            console.error('[Button Click] window.init is not defined!');
-                            loadingIndicator.innerHTML = '❌ Init Not Found';
-                            
-                            // Check component status
-                            console.log('Component status:', {
-                                ItemMatcher: typeof window.ItemMatcher,
-                                OrderBatcher: typeof window.OrderBatcher,
-                                CategoryManager: typeof window.CategoryManager,
-                                BatchManager: typeof window.BatchManager,
-                                OrderExtractor: typeof window.OrderExtractor,
-                                OverlayUI: typeof window.OverlayUI,
-                                overlayUI: typeof window.otterOverlayUI,
-                                componentsError: window.componentsError
-                            });
-                        }
-                    } catch (err) {
-                        console.error('Manual overlay creation failed:', err);
-                        loadingIndicator.innerHTML = '❌ Error: ' + err.message;
-                        loadingIndicator.style.background = '#f44336';
-                    }
-                }, 500);
-            };
-            document.body.appendChild(triggerBtn);
-            
-            setTimeout(() => {
-                loadingIndicator.style.background = '#4CAF50';
-                loadingIndicator.innerHTML = '✅ Otter Consolidator Ready';
-                setTimeout(() => {
-                    loadingIndicator.style.opacity = '0.7';
-                }, 2000);
-            }, 1000);
-        } else {
-            setTimeout(addIndicator, 100);
-        }
-    }
-    addIndicator();
 
     // ===== GM Storage Wrapper =====
     // Provides Chrome storage API compatibility using Tampermonkey storage
@@ -5180,6 +4990,249 @@ body {
       module.exports = CategoryManager;
     }
 
+    // ----- components/prepTimeTracker.js -----
+    /**
+     * Prep Time Tracker
+     * Tracks order completion times and calculates average preparation times
+     * Adapted for Tampermonkey environment
+     */
+    
+    class PrepTimeTracker {
+      constructor() {
+        this.completedOrders = new Map(); // orderId -> completion data
+        this.storageKey = 'prepTimeData';
+        this.loadFromStorage();
+      }
+    
+      /**
+       * Track when an order transitions from cooking to completed
+       * @param {string} orderId - The order ID
+       * @param {Date} orderedAt - When the order was placed
+       * @param {Date} completedAt - When the order was completed
+       */
+      trackOrderCompletion(orderId, orderedAt, completedAt = new Date()) {
+        if (this.completedOrders.has(orderId)) {
+          console.log(`[PrepTimeTracker] Order ${orderId} already tracked`);
+          return;
+        }
+    
+        const prepTimeMinutes = Math.floor((completedAt - orderedAt) / 60000);
+        
+        const completionData = {
+          orderId,
+          orderedAt: orderedAt.toISOString(),
+          completedAt: completedAt.toISOString(),
+          prepTimeMinutes,
+          dayOfWeek: completedAt.getDay(),
+          hourOfDay: completedAt.getHours()
+        };
+    
+        this.completedOrders.set(orderId, completionData);
+        console.log(`[PrepTimeTracker] Tracked order ${orderId}: ${prepTimeMinutes} minutes prep time`);
+        
+        // Clean up old data (keep last 7 days)
+        this.cleanupOldData();
+        
+        // Save to storage
+        this.saveToStorage();
+      }
+    
+      /**
+       * Get average prep time for the last hour
+       * @returns {Object} { averageMinutes, orderCount }
+       */
+      getLastHourAverage() {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const relevantOrders = [];
+    
+        this.completedOrders.forEach(order => {
+          const completedAt = new Date(order.completedAt);
+          if (completedAt >= oneHourAgo) {
+            relevantOrders.push(order);
+          }
+        });
+    
+        if (relevantOrders.length === 0) {
+          return { averageMinutes: 0, orderCount: 0 };
+        }
+    
+        const totalMinutes = relevantOrders.reduce((sum, order) => sum + order.prepTimeMinutes, 0);
+        return {
+          averageMinutes: Math.round(totalMinutes / relevantOrders.length),
+          orderCount: relevantOrders.length
+        };
+      }
+    
+      /**
+       * Get average prep time for today
+       * @returns {Object} { averageMinutes, orderCount }
+       */
+      getTodayAverage() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const relevantOrders = [];
+    
+        this.completedOrders.forEach(order => {
+          const completedAt = new Date(order.completedAt);
+          if (completedAt >= today) {
+            relevantOrders.push(order);
+          }
+        });
+    
+        if (relevantOrders.length === 0) {
+          return { averageMinutes: 0, orderCount: 0 };
+        }
+    
+        const totalMinutes = relevantOrders.reduce((sum, order) => sum + order.prepTimeMinutes, 0);
+        return {
+          averageMinutes: Math.round(totalMinutes / relevantOrders.length),
+          orderCount: relevantOrders.length
+        };
+      }
+    
+      /**
+       * Get hourly breakdown for today
+       * @returns {Array} Array of { hour, averageMinutes, orderCount }
+       */
+      getTodayHourlyBreakdown() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const hourlyData = {};
+    
+        this.completedOrders.forEach(order => {
+          const completedAt = new Date(order.completedAt);
+          if (completedAt >= today) {
+            const hour = order.hourOfDay;
+            if (!hourlyData[hour]) {
+              hourlyData[hour] = { totalMinutes: 0, count: 0 };
+            }
+            hourlyData[hour].totalMinutes += order.prepTimeMinutes;
+            hourlyData[hour].count++;
+          }
+        });
+    
+        const breakdown = [];
+        for (let hour = 0; hour < 24; hour++) {
+          if (hourlyData[hour]) {
+            breakdown.push({
+              hour,
+              averageMinutes: Math.round(hourlyData[hour].totalMinutes / hourlyData[hour].count),
+              orderCount: hourlyData[hour].count
+            });
+          }
+        }
+    
+        return breakdown;
+      }
+    
+      /**
+       * Get statistics for display
+       */
+      getStatistics() {
+        const lastHour = this.getLastHourAverage();
+        const today = this.getTodayAverage();
+        const hourlyBreakdown = this.getTodayHourlyBreakdown();
+    
+        // Calculate peak hours
+        const peakHours = hourlyBreakdown
+          .sort((a, b) => b.orderCount - a.orderCount)
+          .slice(0, 3)
+          .map(h => h.hour);
+    
+        return {
+          lastHour,
+          today,
+          hourlyBreakdown,
+          peakHours,
+          totalOrdersTracked: this.completedOrders.size
+        };
+      }
+    
+      /**
+       * Clean up data older than 7 days
+       */
+      cleanupOldData() {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const toDelete = [];
+    
+        this.completedOrders.forEach((order, orderId) => {
+          const completedAt = new Date(order.completedAt);
+          if (completedAt < sevenDaysAgo) {
+            toDelete.push(orderId);
+          }
+        });
+    
+        toDelete.forEach(orderId => this.completedOrders.delete(orderId));
+        
+        if (toDelete.length > 0) {
+          console.log(`[PrepTimeTracker] Cleaned up ${toDelete.length} old orders`);
+        }
+      }
+    
+      /**
+       * Save data to GM storage
+       */
+      async saveToStorage() {
+        const data = Array.from(this.completedOrders.entries());
+        await GM_setValue(this.storageKey, {
+          orders: data,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+    
+      /**
+       * Load data from GM storage
+       */
+      async loadFromStorage() {
+        try {
+          const stored = await GM_getValue(this.storageKey);
+          if (stored && stored.orders) {
+            this.completedOrders = new Map(stored.orders);
+            console.log(`[PrepTimeTracker] Loaded ${this.completedOrders.size} orders from storage`);
+            console.log(`[PrepTimeTracker] Last updated: ${stored.lastUpdated}`);
+            
+            // Clean up old data on load
+            this.cleanupOldData();
+          }
+        } catch (error) {
+          console.log('[PrepTimeTracker] Error loading from storage:', error);
+        }
+      }
+    
+      /**
+       * Check if an order is already completed
+       */
+      isOrderCompleted(orderId) {
+        return this.completedOrders.has(orderId);
+      }
+    
+      /**
+       * Get completion data for a specific order
+       */
+      getOrderCompletionData(orderId) {
+        return this.completedOrders.get(orderId);
+      }
+    
+      /**
+       * Export data for analysis
+       */
+      exportData() {
+        const data = Array.from(this.completedOrders.values());
+        return {
+          orders: data,
+          summary: this.getStatistics(),
+          exportedAt: new Date().toISOString()
+        };
+      }
+    }
+    
+    // Make available globally
+    window.PrepTimeTracker = PrepTimeTracker;
+    
+    // Create and initialize the global prep time tracker
+    window.otterPrepTimeTracker = new PrepTimeTracker();
+    console.log('[PrepTimeTracker] Initialized global instance');
+
     // ----- components/batchManager.js -----
     if (window.logger) {
       window.logger.log('[BatchManager.js] Script loaded at:', new Date().toISOString());
@@ -5195,11 +5248,15 @@ body {
         this.maxBatchCapacity = 5; // Default batch size is 5
         this.currentBatchIndex = 0;
         this.nextBatchNumber = 1;
+        this.orderTimestamps = new Map(); // orderId -> original orderedAt timestamp
+        this.orderStatuses = new Map(); // orderId -> order status for transition detection
         
         // FIFO batching - no time-based assignment
         // Orders stay in their original batch
         
         this.loadSettings();
+        this.loadOrderTimestamps();
+        this.loadOrderStatuses();
         this.initializeBatches();
       }
       
@@ -5306,11 +5363,59 @@ body {
           if (orderBatch) {
             // Order already assigned, keep it in same batch
             batch = orderBatch;
-            // Update the order data (in case wait time changed)
+            // Preserve the stored timestamp when updating order data
+            const storedTimestamp = this.getStoredOrderTimestamp(order.id);
+            if (storedTimestamp) {
+              order.orderedAt = storedTimestamp;
+            }
+            
+            // Check for status changes (COOKING -> COMPLETED)
+            const existingOrder = batch.orders.get(order.id);
+            if (existingOrder && existingOrder.orderStatus !== order.orderStatus) {
+              console.log(`[BatchManager] Order ${order.id} status changed from ${existingOrder.orderStatus} to ${order.orderStatus}`);
+              
+              // Check if this is a COOKING -> COMPLETED transition
+              if ((existingOrder.orderStatus === 'COOKING' || existingOrder.orderStatus === 'IN_PROGRESS' || existingOrder.orderStatus === 'PREPARING') && 
+                  (order.orderStatus === 'COMPLETED' || order.orderStatus === 'READY' || order.orderStatus === 'PICKED_UP')) {
+                console.log(`[BatchManager] Order ${order.id} completed!`);
+                order.completed = true;
+                order.completedAt = Date.now();
+                
+                // Track prep time
+                if (window.otterPrepTimeTracker && order.orderedAt) {
+                  try {
+                    const orderedDate = new Date(order.orderedAt);
+                    const completedDate = new Date(order.completedAt);
+                    window.otterPrepTimeTracker.trackOrderCompletion(order.id, orderedDate, completedDate);
+                    console.log(`[BatchManager] Prep time tracked for order ${order.id}`);
+                  } catch (error) {
+                    console.error(`[BatchManager] Error tracking prep time for order ${order.id}:`, error);
+                  }
+                }
+              }
+            }
+            
+            // Update the order data (in case wait time or status changed)
             batch.orders.set(order.id, order);
           } else {
             // New order, assign to appropriate batch
             batch = this.getBatchForOrder(order);
+            
+            // Check if we already have the original timestamp for this order
+            const storedTimestamp = this.getStoredOrderTimestamp(order.id);
+            if (storedTimestamp) {
+              // Use the stored timestamp
+              order.orderedAt = storedTimestamp;
+              console.log(`[BatchManager] Using stored timestamp for order ${order.id}: ${storedTimestamp}`);
+            } else {
+              // Store the current timestamp for future reference
+              this.storeOrderTimestamp(order.id, order.orderedAt);
+              console.log(`[BatchManager] Storing new timestamp for order ${order.id}: ${order.orderedAt}`);
+            }
+            
+            // Update order status tracking
+            this.updateOrderStatus(order.id, order.orderStatus);
+            
             // Add timestamp for new order tracking
             order.addedAt = Date.now();
             batch.orders.set(order.id, order);
@@ -5364,6 +5469,85 @@ body {
           this.maxBatchCapacity = settings.maxWaveCapacity;
         }
         // Don't update existing batches - only affects new batches
+      }
+      
+      async loadOrderTimestamps() {
+        try {
+          const stored = await GM_getValue('orderTimestamps');
+          if (stored && typeof stored === 'object') {
+            this.orderTimestamps = new Map(Object.entries(stored));
+            console.log(`[BatchManager] Loaded ${this.orderTimestamps.size} order timestamps`);
+          }
+        } catch (error) {
+          console.error('[BatchManager] Error loading order timestamps:', error);
+        }
+      }
+      
+      async saveOrderTimestamps() {
+        try {
+          const data = Object.fromEntries(this.orderTimestamps);
+          await GM_setValue('orderTimestamps', data);
+        } catch (error) {
+          console.error('[BatchManager] Error saving order timestamps:', error);
+        }
+      }
+      
+      storeOrderTimestamp(orderId, timestamp) {
+        this.orderTimestamps.set(orderId, timestamp);
+        this.saveOrderTimestamps();
+      }
+      
+      getStoredOrderTimestamp(orderId) {
+        return this.orderTimestamps.get(orderId);
+      }
+      
+      async loadOrderStatuses() {
+        try {
+          const stored = await GM_getValue('orderStatuses');
+          if (stored && typeof stored === 'object') {
+            this.orderStatuses = new Map(Object.entries(stored));
+            console.log(`[BatchManager] Loaded ${this.orderStatuses.size} order statuses`);
+          }
+        } catch (error) {
+          console.error('[BatchManager] Error loading order statuses:', error);
+        }
+      }
+      
+      async saveOrderStatuses() {
+        try {
+          const data = Object.fromEntries(this.orderStatuses);
+          await GM_setValue('orderStatuses', data);
+        } catch (error) {
+          console.error('[BatchManager] Error saving order statuses:', error);
+        }
+      }
+      
+      updateOrderStatus(orderId, newStatus) {
+        const previousStatus = this.orderStatuses.get(orderId);
+        
+        // Only update if status actually changed
+        if (previousStatus !== newStatus) {
+          console.log(`[BatchManager] Order ${orderId} status: ${previousStatus || 'NEW'} -> ${newStatus}`);
+          this.orderStatuses.set(orderId, newStatus);
+          this.saveOrderStatuses();
+          
+          // Return true if this was a cooking -> completed transition
+          if (previousStatus && this.isCookingStatus(previousStatus) && this.isCompletedStatus(newStatus)) {
+            return true;
+          }
+        }
+        return false;
+      }
+      
+      isCookingStatus(status) {
+        const cookingStatuses = ['COOKING', 'IN_PROGRESS', 'PREPARING', 'PROCESSING', 'IN_KITCHEN', 'CONFIRMED', 'ACCEPTED'];
+        return cookingStatuses.includes(status?.toUpperCase());
+      }
+      
+      isCompletedStatus(status) {
+        // Only track when food is READY, not when it's picked up or delivered
+        const completedStatuses = ['COMPLETED', 'READY', 'READY_FOR_PICKUP', 'COMPLETE'];
+        return completedStatuses.includes(status?.toUpperCase());
       }
     
       generateBatchId() {
@@ -5649,9 +5833,15 @@ body {
               batch.orders.delete(orderId);
               // Remove from new orders set if present
               batch.newOrderIds.delete(orderId);
+              // Also clean up the stored timestamp
+              this.orderTimestamps.delete(orderId);
+              this.orderStatuses.delete(orderId);
             }
           });
         });
+        
+        // Save the cleaned up timestamps
+        this.saveOrderTimestamps();
       }
       
       // Clear "new" status from orders after 30 seconds
@@ -6195,7 +6385,8 @@ body {
     class BatchLabelPrinter {
       constructor() {
         this.labelTransformer = new LabelDataTransformer();
-        this.labelPrinterUrl = chrome.runtime.getURL('label_printer.html');
+        // For Tampermonkey, we'll create the label printer inline
+        this.labelPrinterUrl = 'about:blank'; // We'll inject the HTML after opening
       }
     
       /**
@@ -6289,45 +6480,207 @@ body {
       async openLabelPrinter() {
         return new Promise((resolve, reject) => {
           console.log('[BatchLabelPrinter] Opening label printer...');
-          console.log('[BatchLabelPrinter] Label printer URL:', this.labelPrinterUrl);
           
-          // Check if we're in a content script
-          if (typeof chrome.tabs === 'undefined' || !chrome.tabs.create) {
-            console.log('[BatchLabelPrinter] Running in content script, sending message to background');
-            
-            // Send message to background script to open tab
-            chrome.runtime.sendMessage(
-              { action: 'openLabelPrinter', url: this.labelPrinterUrl },
-              (response) => {
-                console.log('[BatchLabelPrinter] Background response:', response);
-                
-                if (chrome.runtime.lastError) {
-                  console.error('[BatchLabelPrinter] Chrome runtime error:', chrome.runtime.lastError);
-                  reject(new Error(chrome.runtime.lastError.message));
-                } else if (response && response.success) {
-                  console.log('[BatchLabelPrinter] Successfully opened label printer');
-                  resolve(response.tab);
-                } else {
-                  console.error('[BatchLabelPrinter] Failed response:', response);
-                  reject(new Error(response ? response.error : 'Failed to open label printer'));
-                }
+          try {
+            // Get the stored label data
+            chrome.storage.local.get('pendingLabelData', (result) => {
+              const labelData = result.pendingLabelData;
+              if (!labelData) {
+                reject(new Error('No label data found'));
+                return;
               }
-            );
-          } else {
-            console.log('[BatchLabelPrinter] Have tabs API access, creating tab directly');
-            
-            // We're in a context with chrome.tabs access
-            chrome.tabs.create({ url: this.labelPrinterUrl }, (tab) => {
-              if (chrome.runtime.lastError) {
-                console.error('[BatchLabelPrinter] Tab creation error:', chrome.runtime.lastError);
-                reject(new Error(chrome.runtime.lastError.message));
-              } else {
-                console.log('[BatchLabelPrinter] Tab created successfully:', tab.id);
-                resolve(tab);
-              }
+              
+              // Create the label printer HTML with embedded data
+              const labelPrinterHTML = this.generateLabelPrinterHTML(labelData);
+              
+              // Create a blob URL for the HTML
+              const blob = new Blob([labelPrinterHTML], { type: 'text/html' });
+              const blobUrl = URL.createObjectURL(blob);
+              
+              // Open in new tab using Tampermonkey's GM_openInTab
+              const newTab = GM_openInTab(blobUrl, {
+                active: true,
+                insert: true
+              });
+              
+              // Clean up blob URL after a delay
+              setTimeout(() => {
+                URL.revokeObjectURL(blobUrl);
+              }, 5000);
+              
+              resolve({ id: Date.now(), url: blobUrl });
             });
+          } catch (error) {
+            console.error('[BatchLabelPrinter] Error opening label printer:', error);
+            reject(error);
           }
         });
+      }
+      
+      generateLabelPrinterHTML(labelData) {
+        const labelsHTML = labelData.labels.map(label => `
+          <div class="label-item">
+            <div class="logo-container">
+              ${label.logoUrl ? `<img src="${label.logoUrl}" alt="${label.restaurant}">` : ''}
+            </div>
+            <div class="text-container">
+              <div class="item-name-prominent">${label.itemName}</div>
+              ${label.itemSize ? `<div class="item-size">${label.itemSize}</div>` : ''}
+              <div class="customer-name">${label.customerName}</div>
+              ${label.itemNotes && label.itemNotes.length > 0 ? 
+                `<div class="item-notes">${label.itemNotes.join(' • ')}</div>` : ''}
+            </div>
+          </div>
+        `).join('');
+        
+        return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Print Labels - ${labelData.batchName}</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+      }
+      
+      .label-sheet {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(10, 1fr);
+        gap: 0;
+        width: 8.5in;
+        height: 11in;
+        margin: 0 auto;
+        page-break-after: always;
+      }
+      
+      .label-item {
+        width: 2.625in;
+        height: 1in;
+        padding: 0.125in;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        border: 1px dashed #ccc;
+      }
+      
+      .logo-container {
+        width: 0.75in;
+        height: 0.75in;
+        margin-right: 0.125in;
+        flex-shrink: 0;
+      }
+      
+      .logo-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      
+      .text-container {
+        flex: 1;
+        overflow: hidden;
+      }
+      
+      .item-name-prominent {
+        font-size: 11pt;
+        font-weight: bold;
+        line-height: 1.2;
+        margin-bottom: 2px;
+      }
+      
+      .item-size {
+        font-size: 9pt;
+        color: #666;
+        margin-bottom: 2px;
+      }
+      
+      .customer-name {
+        font-size: 10pt;
+        color: #333;
+        margin-bottom: 2px;
+      }
+      
+      .item-notes {
+        font-size: 8pt;
+        color: #666;
+        font-style: italic;
+      }
+      
+      @media print {
+        body {
+          margin: 0;
+          padding: 0;
+        }
+        
+        .label-sheet {
+          page-break-after: always;
+        }
+        
+        .label-item {
+          border: none;
+        }
+        
+        .no-print {
+          display: none !important;
+        }
+      }
+      
+      .controls {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      
+      .controls button {
+        padding: 10px 20px;
+        font-size: 16px;
+        margin: 0 10px;
+        cursor: pointer;
+      }
+      
+      .print-btn {
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+      }
+      
+      .close-btn {
+        background: #f44336;
+        color: white;
+        border: none;
+        border-radius: 5px;
+      }
+    </style>
+</head>
+<body>
+    <div class="controls no-print">
+      <h2>Label Preview - ${labelData.batchName}</h2>
+      <p>${labelData.labels.length} labels ready to print</p>
+      <button class="print-btn" onclick="window.print()">🖨️ Print Labels</button>
+      <button class="close-btn" onclick="window.close()">❌ Close</button>
+    </div>
+    
+    <div class="label-sheet">
+      ${labelsHTML}
+    </div>
+    
+    <script>
+      // Auto-print if requested
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('autoprint') === 'true') {
+        setTimeout(() => {
+          window.print();
+        }, 1000);
+      }
+    </script>
+</body>
+</html>
+        `;
       }
     
       /**
@@ -11324,6 +11677,9 @@ body {
           throw new Error('Overlay element was not created');
         }
         
+        // Start prep time update interval
+        this.startPrepTimeUpdateInterval();
+        
         // Force visibility
         this.overlayElement.style.display = 'flex';
         console.log('Overlay created and visible');
@@ -12486,12 +12842,15 @@ body {
       
       updatePrepTimeStats() {
         if (!window.otterPrepTimeTracker) {
+          console.log('[OverlayUI] PrepTimeTracker not available');
           return;
         }
         
         try {
           const lastHour = window.otterPrepTimeTracker.getLastHourAverage();
           const today = window.otterPrepTimeTracker.getTodayAverage();
+          
+          console.log('[OverlayUI] Prep time stats:', { lastHour, today });
           
           const hourElement = this.overlayElement.querySelector('.prep-time-hour');
           const todayElement = this.overlayElement.querySelector('.prep-time-today');
@@ -12518,6 +12877,20 @@ body {
         } catch (error) {
           console.error('[OverlayUI] Error updating prep time stats:', error);
         }
+      }
+      
+      startPrepTimeUpdateInterval() {
+        // Update prep time stats every 30 seconds
+        if (this.prepTimeInterval) {
+          clearInterval(this.prepTimeInterval);
+        }
+        
+        this.prepTimeInterval = setInterval(() => {
+          this.updatePrepTimeStats();
+        }, 30000); // 30 seconds
+        
+        // Also update immediately
+        this.updatePrepTimeStats();
       }
       
       updateAPIStatus() {
@@ -14723,6 +15096,41 @@ body {
         return 'Could not find sidebar';
       },
     
+      // Manually mark an order as completed for testing
+      testMarkOrderCompleted(orderId) {
+        console.log(`[Debug] Manually marking order ${orderId} as completed`);
+        
+        // Find the order across all batches
+        for (const batch of window.otterOverlayUI.batchManager.batches) {
+          if (batch.orders.has(orderId)) {
+            const order = batch.orders.get(orderId);
+            if (!order.completed) {
+              window.otterOverlayUI.batchManager.markOrderCompleted(orderId);
+              console.log(`[Debug] Order ${orderId} marked as completed`);
+              return true;
+            } else {
+              console.log(`[Debug] Order ${orderId} was already completed`);
+              return false;
+            }
+          }
+        }
+        
+        console.log(`[Debug] Order ${orderId} not found in any batch`);
+        return false;
+      },
+      
+      // Get prep time stats for debugging
+      getPrepTimeStats() {
+        if (!window.otterPrepTimeTracker) {
+          console.log('[Debug] PrepTimeTracker not available');
+          return null;
+        }
+        
+        const stats = window.otterPrepTimeTracker.getStatistics();
+        console.log('[Debug] Prep Time Statistics:', stats);
+        return stats;
+      },
+      
       // Search DOM for hidden data
       findHiddenData() {
         console.log('=== SEARCHING FOR HIDDEN ORDER DATA ===');
