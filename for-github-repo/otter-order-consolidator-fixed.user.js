@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition (Fixed)
 // @namespace    http://tampermonkey.net/
-// @version      4.3.1
+// @version      4.2.0
 // @description  Consolidate orders and print batch labels for Otter (Tablet Compatible)
 // @author       Your Name
 // @match        https://app.tryotter.com/*
@@ -5249,35 +5249,18 @@ body {
         this.currentBatchIndex = 0;
         this.nextBatchNumber = 1;
         this.orderTimestamps = new Map(); // orderId -> original orderedAt timestamp
-        this.orderStatuses = new Map(); // orderId -> order status for transition detection
         
         // FIFO batching - no time-based assignment
         // Orders stay in their original batch
         
+        this.loadSettings();
+        this.loadOrderTimestamps();
         this.initializeBatches();
-        
-        // Initialize data synchronously to avoid breaking initialization
-        this.orderStatuses = new Map();
-        this.orderTimestamps = new Map();
-        
-        // Load data in background without blocking
-        this.loadDataAsync();
       }
       
       initializeBatches() {
         // Create first batch
         this.createNewBatch();
-      }
-      
-      async loadDataAsync() {
-        try {
-          await this.loadSettings();
-          await this.loadOrderTimestamps();
-          await this.loadOrderStatuses();
-          console.log('[BatchManager] All data loaded successfully');
-        } catch (error) {
-          console.error('[BatchManager] Error loading data:', error);
-        }
       }
       
       get currentBatch() {
@@ -5384,30 +5367,7 @@ body {
               order.orderedAt = storedTimestamp;
             }
             
-            // Check for status changes only if status tracking is ready
-            if (this.orderStatuses && order.orderStatus) {
-              const wasCompletedTransition = this.updateOrderStatus(order.id, order.orderStatus);
-              
-              if (wasCompletedTransition && !order.completed) {
-                console.log(`[BatchManager] Order ${order.id} completed!`);
-                order.completed = true;
-                order.completedAt = Date.now();
-                
-                // Track prep time
-                if (window.otterPrepTimeTracker && order.orderedAt) {
-                  try {
-                    const orderedDate = new Date(order.orderedAt);
-                    const completedDate = new Date(order.completedAt);
-                    window.otterPrepTimeTracker.trackOrderCompletion(order.id, orderedDate, completedDate);
-                    console.log(`[BatchManager] Prep time tracked for order ${order.id}`);
-                  } catch (error) {
-                    console.error(`[BatchManager] Error tracking prep time for order ${order.id}:`, error);
-                  }
-                }
-              }
-            }
-            
-            // Update the order data (in case wait time or status changed)
+            // Update the order data (in case wait time changed)
             batch.orders.set(order.id, order);
           } else {
             // New order, assign to appropriate batch
@@ -5425,10 +5385,6 @@ body {
               console.log(`[BatchManager] Storing new timestamp for order ${order.id}: ${order.orderedAt}`);
             }
             
-            // Update order status tracking only if initialized
-            if (this.orderStatuses && order.orderStatus) {
-              this.updateOrderStatus(order.id, order.orderStatus);
-            }
             
             // Add timestamp for new order tracking
             order.addedAt = Date.now();
@@ -5476,8 +5432,7 @@ body {
       
       async loadSettings() {
         try {
-          // Simple non-async get for Tampermonkey
-          const settings = GM_getValue('settings');
+          const settings = await GM_getValue('settings');
           if (settings && settings.maxBatchCapacity) {
             this.maxBatchCapacity = settings.maxBatchCapacity;
           } else if (settings && settings.maxWaveCapacity) {
@@ -5487,15 +5442,14 @@ body {
           // Don't update existing batches - only affects new batches
         } catch (error) {
           console.error('[BatchManager] Error loading settings:', error);
-          // Use default value on error
+          // Use default value
           this.maxBatchCapacity = 5;
         }
       }
       
       async loadOrderTimestamps() {
         try {
-          // Simple non-async get for Tampermonkey
-          const stored = GM_getValue('orderTimestamps');
+          const stored = await GM_getValue('orderTimestamps');
           if (stored && typeof stored === 'object') {
             this.orderTimestamps = new Map(Object.entries(stored));
             console.log(`[BatchManager] Loaded ${this.orderTimestamps.size} order timestamps`);
@@ -5505,12 +5459,10 @@ body {
         }
       }
       
-      saveOrderTimestamps() {
+      async saveOrderTimestamps() {
         try {
-          if (this.orderTimestamps && this.orderTimestamps.size > 0) {
-            const data = Object.fromEntries(this.orderTimestamps);
-            GM_setValue('orderTimestamps', data);
-          }
+          const data = Object.fromEntries(this.orderTimestamps);
+          await GM_setValue('orderTimestamps', data);
         } catch (error) {
           console.error('[BatchManager] Error saving order timestamps:', error);
         }
@@ -5525,62 +5477,6 @@ body {
         return this.orderTimestamps.get(orderId);
       }
       
-      async loadOrderStatuses() {
-        try {
-          // Simple non-async get for Tampermonkey
-          const stored = GM_getValue('orderStatuses');
-          if (stored && typeof stored === 'object') {
-            this.orderStatuses = new Map(Object.entries(stored));
-            console.log(`[BatchManager] Loaded ${this.orderStatuses.size} order statuses`);
-          }
-        } catch (error) {
-          console.error('[BatchManager] Error loading order statuses:', error);
-        }
-      }
-      
-      saveOrderStatuses() {
-        try {
-          if (this.orderStatuses && this.orderStatuses.size > 0) {
-            const data = Object.fromEntries(this.orderStatuses);
-            GM_setValue('orderStatuses', data);
-          }
-        } catch (error) {
-          console.error('[BatchManager] Error saving order statuses:', error);
-        }
-      }
-      
-      updateOrderStatus(orderId, newStatus) {
-        // Safety check
-        if (!this.orderStatuses || !orderId || !newStatus) {
-          return false;
-        }
-        
-        const previousStatus = this.orderStatuses.get(orderId);
-        
-        // Only update if status actually changed
-        if (previousStatus !== newStatus) {
-          console.log(`[BatchManager] Order ${orderId} status: ${previousStatus || 'NEW'} -> ${newStatus}`);
-          this.orderStatuses.set(orderId, newStatus);
-          this.saveOrderStatuses();
-          
-          // Return true if this was a cooking -> completed transition
-          if (previousStatus && this.isCookingStatus(previousStatus) && this.isCompletedStatus(newStatus)) {
-            return true;
-          }
-        }
-        return false;
-      }
-      
-      isCookingStatus(status) {
-        const cookingStatuses = ['COOKING', 'IN_PROGRESS', 'PREPARING', 'PROCESSING', 'IN_KITCHEN', 'CONFIRMED', 'ACCEPTED'];
-        return cookingStatuses.includes(status?.toUpperCase());
-      }
-      
-      isCompletedStatus(status) {
-        // Only track when food is READY, not when it's picked up or delivered
-        const completedStatuses = ['COMPLETED', 'READY', 'READY_FOR_PICKUP', 'COMPLETE'];
-        return completedStatuses.includes(status?.toUpperCase());
-      }
     
       generateBatchId() {
         return `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -5867,7 +5763,6 @@ body {
               batch.newOrderIds.delete(orderId);
               // Also clean up the stored timestamp
               this.orderTimestamps.delete(orderId);
-              this.orderStatuses.delete(orderId);
             }
           });
         });
