@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition (Fixed)
 // @namespace    http://tampermonkey.net/
-// @version      4.3.0
+// @version      4.3.1
 // @description  Consolidate orders and print batch labels for Otter (Tablet Compatible)
 // @author       Your Name
 // @match        https://app.tryotter.com/*
@@ -5256,7 +5256,11 @@ body {
         
         this.initializeBatches();
         
-        // Load settings and data asynchronously
+        // Initialize data synchronously to avoid breaking initialization
+        this.orderStatuses = new Map();
+        this.orderTimestamps = new Map();
+        
+        // Load data in background without blocking
         this.loadDataAsync();
       }
       
@@ -5380,14 +5384,11 @@ body {
               order.orderedAt = storedTimestamp;
             }
             
-            // Check for status changes (COOKING -> COMPLETED)
-            const existingOrder = batch.orders.get(order.id);
-            if (existingOrder && existingOrder.orderStatus !== order.orderStatus) {
-              console.log(`[BatchManager] Order ${order.id} status changed from ${existingOrder.orderStatus} to ${order.orderStatus}`);
+            // Check for status changes only if status tracking is ready
+            if (this.orderStatuses && order.orderStatus) {
+              const wasCompletedTransition = this.updateOrderStatus(order.id, order.orderStatus);
               
-              // Check if this is a COOKING -> COMPLETED transition
-              if ((existingOrder.orderStatus === 'COOKING' || existingOrder.orderStatus === 'IN_PROGRESS' || existingOrder.orderStatus === 'PREPARING') && 
-                  (order.orderStatus === 'COMPLETED' || order.orderStatus === 'READY' || order.orderStatus === 'PICKED_UP')) {
+              if (wasCompletedTransition && !order.completed) {
                 console.log(`[BatchManager] Order ${order.id} completed!`);
                 order.completed = true;
                 order.completedAt = Date.now();
@@ -5424,8 +5425,10 @@ body {
               console.log(`[BatchManager] Storing new timestamp for order ${order.id}: ${order.orderedAt}`);
             }
             
-            // Update order status tracking
-            this.updateOrderStatus(order.id, order.orderStatus);
+            // Update order status tracking only if initialized
+            if (this.orderStatuses && order.orderStatus) {
+              this.updateOrderStatus(order.id, order.orderStatus);
+            }
             
             // Add timestamp for new order tracking
             order.addedAt = Date.now();
@@ -5473,8 +5476,8 @@ body {
       
       async loadSettings() {
         try {
-          // Use GM storage instead of Chrome storage
-          const settings = await Promise.resolve(GM_getValue('settings'));
+          // Simple non-async get for Tampermonkey
+          const settings = GM_getValue('settings');
           if (settings && settings.maxBatchCapacity) {
             this.maxBatchCapacity = settings.maxBatchCapacity;
           } else if (settings && settings.maxWaveCapacity) {
@@ -5491,23 +5494,23 @@ body {
       
       async loadOrderTimestamps() {
         try {
-          // GM_getValue might not be async in some versions
-          const stored = await Promise.resolve(GM_getValue('orderTimestamps'));
+          // Simple non-async get for Tampermonkey
+          const stored = GM_getValue('orderTimestamps');
           if (stored && typeof stored === 'object') {
             this.orderTimestamps = new Map(Object.entries(stored));
             console.log(`[BatchManager] Loaded ${this.orderTimestamps.size} order timestamps`);
           }
         } catch (error) {
           console.error('[BatchManager] Error loading order timestamps:', error);
-          // Initialize with empty map on error
-          this.orderTimestamps = new Map();
         }
       }
       
-      async saveOrderTimestamps() {
+      saveOrderTimestamps() {
         try {
-          const data = Object.fromEntries(this.orderTimestamps);
-          await Promise.resolve(GM_setValue('orderTimestamps', data));
+          if (this.orderTimestamps && this.orderTimestamps.size > 0) {
+            const data = Object.fromEntries(this.orderTimestamps);
+            GM_setValue('orderTimestamps', data);
+          }
         } catch (error) {
           console.error('[BatchManager] Error saving order timestamps:', error);
         }
@@ -5524,29 +5527,34 @@ body {
       
       async loadOrderStatuses() {
         try {
-          // GM_getValue might not be async in some versions
-          const stored = await Promise.resolve(GM_getValue('orderStatuses'));
+          // Simple non-async get for Tampermonkey
+          const stored = GM_getValue('orderStatuses');
           if (stored && typeof stored === 'object') {
             this.orderStatuses = new Map(Object.entries(stored));
             console.log(`[BatchManager] Loaded ${this.orderStatuses.size} order statuses`);
           }
         } catch (error) {
           console.error('[BatchManager] Error loading order statuses:', error);
-          // Initialize with empty map on error
-          this.orderStatuses = new Map();
         }
       }
       
-      async saveOrderStatuses() {
+      saveOrderStatuses() {
         try {
-          const data = Object.fromEntries(this.orderStatuses);
-          await Promise.resolve(GM_setValue('orderStatuses', data));
+          if (this.orderStatuses && this.orderStatuses.size > 0) {
+            const data = Object.fromEntries(this.orderStatuses);
+            GM_setValue('orderStatuses', data);
+          }
         } catch (error) {
           console.error('[BatchManager] Error saving order statuses:', error);
         }
       }
       
       updateOrderStatus(orderId, newStatus) {
+        // Safety check
+        if (!this.orderStatuses || !orderId || !newStatus) {
+          return false;
+        }
+        
         const previousStatus = this.orderStatuses.get(orderId);
         
         // Only update if status actually changed
@@ -16808,5 +16816,4 @@ body {
       }).observe(document, { subtree: true, childList: true });
     })();
 
-    
 })();
