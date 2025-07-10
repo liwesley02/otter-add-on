@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator - Mobile Firefox
 // @namespace    http://tampermonkey.net/
-// @version      5.0.0
+// @version      5.1.0
 // @description  Consolidate orders from Otter Dashboard for batch processing - Mobile Firefox compatible
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://tryotter.com/*
+// @match        https://*.tryotter.com/*
+// @match        https://restaurant.tryotter.com/*
 // @icon         data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNCIgZmlsbD0iIzAwNTVBNCIgc3Ryb2tlPSIjMDAzMzcwIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8cGF0aCBkPSJNOCAxNEgxMlYyNEg4VjE0WiIgZmlsbD0id2hpdGUiLz4KICA8cGF0aCBkPSJNMTQgMTBIMThWMjRIMTRWMTBaIiBmaWxsPSJ3aGl0ZSIvPgogIDxwYXRoIGQ9Ik0yMCA4SDI0VjI0SDIwVjhaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4=
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -1354,6 +1356,7 @@
             this.overlay.className = 'otter-overlay';
             this.overlay.style.display = 'none';
             
+            
             this.overlay.innerHTML = `
                 <div class="otter-header">
                     <div class="otter-title">
@@ -1572,13 +1575,16 @@
         async refreshOrders() {
             logger.info('Refreshing orders...');
             
-            const extractor = new ReactDataExtractor();
-            const orders = await extractor.extractOrders();
-            
-            this.allOrders = orders;
-            this.selectedOrders.clear();
-            this.updateOrdersList();
-            this.updateStats();
+            // Use global extractOrders function
+            if (window.extractOrders) {
+                const orders = window.extractOrders();
+                this.allOrders = orders;
+                this.selectedOrders.clear();
+                this.updateOrdersList();
+                this.updateStats();
+            } else {
+                logger.warn('Extract orders function not available');
+            }
         }
 
         updateOrdersList() {
@@ -1703,22 +1709,311 @@
 
     // ===== Initialize =====
     logger.info('Otter Order Consolidator (Tampermonkey) initializing...');
+    logger.info('Current URL:', window.location.href);
+    logger.info('Document state:', document.readyState);
     
-    // Create and initialize overlay
-    const overlay = new OverlayUI();
+    // Global state
+    let overlay = null;
+    let floatingButton = null;
+    let extractedOrders = [];
+    let extractionActive = false;
     
-    // Wait for DOM ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            overlay.init();
-        });
-    } else {
-        overlay.init();
+    // Start React extraction immediately
+    function startReactExtraction() {
+        logger.info('Starting React extraction immediately...');
+        
+        // Inject extraction script right away
+        const script = document.createElement('script');
+        script.textContent = `
+            (function() {
+                console.log('[Otter TM] Early React extractor injected');
+                
+                // Global extraction function
+                window.__otterExtractOrders = function() {
+                    const orderRows = document.querySelectorAll('[data-testid="order-row"]');
+                    console.log('[Otter TM] Found ' + orderRows.length + ' order rows');
+                    
+                    if (orderRows.length === 0) return [];
+                    
+                    const orders = [];
+                    orderRows.forEach((row, index) => {
+                        try {
+                            const keys = Object.keys(row);
+                            const fiberKey = keys.find(k => k.startsWith('__reactFiber$'));
+                            
+                            if (!fiberKey) return;
+                            
+                            let fiber = row[fiberKey];
+                            let depth = 0;
+                            
+                            while (fiber && depth < 10) {
+                                if (fiber.memoizedProps && fiber.memoizedProps.order) {
+                                    const orderData = fiber.memoizedProps.order;
+                                    const co = orderData.customerOrder || orderData;
+                                    
+                                    orders.push({
+                                        id: co.orderId?.id || co.id || 'unknown',
+                                        orderNumber: co.orderIdentifier?.displayId || co.displayId || 'unknown',
+                                        customerName: co.customer?.displayName || 'Unknown',
+                                        restaurantName: co.store?.name || co.storeName || 'Unknown Restaurant',
+                                        orderStatus: co.state || co.status || 'UNKNOWN',
+                                        items: []
+                                    });
+                                    break;
+                                }
+                                fiber = fiber.return;
+                                depth++;
+                            }
+                        } catch (e) {
+                            console.error('[Otter TM] Error extracting order ' + index, e);
+                        }
+                    });
+                    
+                    return orders;
+                };
+                
+                // Notify content script
+                window.postMessage({ type: 'otter-tm-extractor-ready' }, '*');
+            })();
+        `;
+        
+        if (document.head) {
+            document.head.appendChild(script);
+            script.remove();
+        } else {
+            // If head doesn't exist yet, wait for it
+            const observer = new MutationObserver(() => {
+                if (document.head) {
+                    document.head.appendChild(script);
+                    script.remove();
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.documentElement, { childList: true });
+        }
     }
+    
+    // Create floating button early
+    function createFloatingButton() {
+        if (floatingButton) return;
+        
+        floatingButton = document.createElement('button');
+        floatingButton.className = 'otter-floating-button';
+        floatingButton.innerHTML = '🦦';
+        floatingButton.title = 'Otter Consolidator - Loading...';
+        floatingButton.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #6c757d;
+            color: white;
+            border: none;
+            font-size: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            z-index: 999998;
+            transition: all 0.3s ease;
+            opacity: 0.7;
+        `;
+        
+        // Add badge for order count
+        const badge = document.createElement('span');
+        badge.id = 'otter-order-badge';
+        badge.style.cssText = `
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ff6b35;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 6px;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+        `;
+        floatingButton.appendChild(badge);
+        
+        floatingButton.addEventListener('click', () => {
+            if (overlay) {
+                overlay.toggle();
+            } else {
+                logger.warn('Overlay not ready yet');
+            }
+        });
+        
+        document.body.appendChild(floatingButton);
+        logger.info('Floating button created');
+    }
+    
+    // Update button with order count
+    function updateFloatingButton(orderCount) {
+        if (!floatingButton) return;
+        
+        const badge = floatingButton.querySelector('#otter-order-badge');
+        if (orderCount > 0) {
+            floatingButton.style.background = '#0055A4';
+            floatingButton.style.opacity = '1';
+            floatingButton.title = `Otter Consolidator - ${orderCount} orders found`;
+            if (badge) {
+                badge.textContent = orderCount;
+                badge.style.display = 'block';
+            }
+        } else {
+            floatingButton.style.background = '#6c757d';
+            floatingButton.style.opacity = '0.7';
+            floatingButton.title = 'Otter Consolidator - No orders found';
+            if (badge) {
+                badge.style.display = 'none';
+            }
+        }
+    }
+    
+    // Extract orders using injected function
+    function extractOrders() {
+        if (!window.__otterExtractOrders) {
+            logger.warn('Extractor not ready yet');
+            return [];
+        }
+        
+        try {
+            const orders = window.__otterExtractOrders();
+            logger.info(`Extracted ${orders.length} orders`);
+            extractedOrders = orders;
+            updateFloatingButton(orders.length);
+            
+            // Update overlay if it exists
+            if (overlay && overlay.updateWithOrders) {
+                overlay.updateWithOrders(orders);
+            }
+            
+            return orders;
+        } catch (error) {
+            logger.error('Failed to extract orders:', error);
+            return [];
+        }
+    }
+    
+    // Monitor for order changes
+    function startOrderMonitoring() {
+        logger.info('Starting order monitoring...');
+        
+        // Initial extraction
+        setTimeout(extractOrders, 1000);
+        
+        // Monitor for DOM changes
+        const observer = new MutationObserver((mutations) => {
+            // Check if order rows were added/removed
+            const hasOrderChanges = mutations.some(mutation => {
+                return Array.from(mutation.addedNodes).some(node => 
+                    node.nodeType === 1 && (
+                        node.matches && node.matches('[data-testid="order-row"]') ||
+                        node.querySelector && node.querySelector('[data-testid="order-row"]')
+                    )
+                );
+            });
+            
+            if (hasOrderChanges && !extractionActive) {
+                extractionActive = true;
+                setTimeout(() => {
+                    extractOrders();
+                    extractionActive = false;
+                }, 500);
+            }
+        });
+        
+        // Start observing when body is ready
+        const startObserving = () => {
+            if (document.body) {
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+                logger.info('Order monitoring started');
+            } else {
+                setTimeout(startObserving, 100);
+            }
+        };
+        startObserving();
+        
+        // Also extract periodically
+        setInterval(extractOrders, 10000);
+    }
+    
+    // Wait for body to exist
+    function waitForBody(callback) {
+        if (document.body) {
+            callback();
+        } else {
+            const observer = new MutationObserver(() => {
+                if (document.body) {
+                    observer.disconnect();
+                    callback();
+                }
+            });
+            observer.observe(document.documentElement, { childList: true });
+        }
+    }
+    
+    // Initialize overlay when ready
+    function initializeOverlay() {
+        logger.info('Initializing overlay...');
+        try {
+            overlay = new OverlayUI();
+            overlay.init();
+            
+            // Add method to update with orders
+            overlay.updateWithOrders = function(orders) {
+                this.allOrders = orders;
+                this.updateOrdersList();
+                this.updateStats();
+            };
+            
+            // Update with current orders
+            if (extractedOrders.length > 0) {
+                overlay.updateWithOrders(extractedOrders);
+            }
+            
+            logger.info('Overlay initialized successfully');
+        } catch (error) {
+            logger.error('Failed to initialize overlay:', error);
+        }
+    }
+    
+    // Start everything
+    logger.info('Starting Otter Consolidator...');
+    
+    // 1. Start React extraction immediately
+    startReactExtraction();
+    
+    // 2. Create floating button as soon as body exists
+    waitForBody(createFloatingButton);
+    
+    // 3. Start monitoring for orders
+    startOrderMonitoring();
+    
+    // 4. Initialize full UI when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeOverlay);
+    } else {
+        setTimeout(initializeOverlay, 100);
+    }
+    
+    // Listen for extractor ready message
+    window.addEventListener('message', (event) => {
+        if (event.data.type === 'otter-tm-extractor-ready') {
+            logger.info('React extractor ready, performing initial extraction');
+            setTimeout(extractOrders, 100);
+        }
+    });
     
     // Expose for debugging
     unsafeWindow.otterDebug = {
-        overlay: overlay,
+        getOverlay: () => overlay,
+        getOrders: () => extractedOrders,
+        extractOrders: extractOrders,
         storage: storage,
         apiClient: apiClient,
         prepTimeTracker: prepTimeTracker,
@@ -1726,5 +2021,5 @@
         version: GM_info.script.version
     };
     
-    logger.info('Otter Order Consolidator ready! Press Ctrl+Shift+O to open.');
+    logger.info('Otter Order Consolidator started! Extracting orders...');
 })();
