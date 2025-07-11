@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.4.0
+// @version      4.5.0
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -56,12 +56,26 @@
             cursor: pointer;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         `;
-        indicator.onclick = () => {
+        indicator.onclick = async () => {
             console.log('🦦 Manual trigger clicked');
-            if (window.init) {
-                window.init();
-            } else {
-                console.error('Init function not found');
+            try {
+                if (window.init) {
+                    await window.init();
+                    // After init, try to show the UI
+                    if (window.otterOverlayUI && window.otterOverlayUI.show) {
+                        window.otterOverlayUI.show();
+                        console.log('🦦 UI shown via manual trigger');
+                    } else if (window.overlayUI && window.overlayUI.show) {
+                        window.overlayUI.show();
+                        console.log('🦦 UI shown via window.overlayUI');
+                    } else {
+                        console.error('🦦 No UI instance found to show');
+                    }
+                } else {
+                    console.error('Init function not found');
+                }
+            } catch (error) {
+                console.error('🦦 Error in manual trigger:', error);
             }
         };
         
@@ -11113,7 +11127,19 @@ body {
         toggleBtn.innerHTML = '📋';
         toggleBtn.title = 'Toggle Order Consolidator (Ctrl+Shift+O)';
         
-        document.body.appendChild(toggleBtn);
+        // Robust DOM ready check
+        const appendToggle = () => {
+          if (!document.body) {
+            console.log('🦦 Waiting for body to create toggle button...');
+            setTimeout(appendToggle, 100);
+            return;
+          }
+          
+          document.body.appendChild(toggleBtn);
+          console.log('🦦 Toggle button created');
+        };
+        
+        appendToggle();
         
         toggleBtn.addEventListener('click', () => {
           this.toggleVisibility();
@@ -11128,7 +11154,19 @@ body {
         modeBtn.innerHTML = '👁️ Loading...';
         modeBtn.title = 'Extension Mode';
         
-        document.body.appendChild(modeBtn);
+        // Robust DOM ready check
+        const appendModeBtn = () => {
+          if (!document.body) {
+            console.log('🦦 Waiting for body to create mode button...');
+            setTimeout(appendModeBtn, 100);
+            return;
+          }
+          
+          document.body.appendChild(modeBtn);
+          console.log('🦦 Mode button created');
+        };
+        
+        appendModeBtn();
         
         // Clicking shows current mode - leadership is automatic
         modeBtn.addEventListener('click', async () => {
@@ -11145,12 +11183,31 @@ body {
       }
       
       async loadSavedState() {
-        // Load saved visibility state
-        const result = await chrome.storage.local.get('consolidatorVisible');
-        const isVisible = result.consolidatorVisible !== false; // Default to visible
+        // FOR DEBUGGING: Force visible on Firefox mobile
+        const isFirefoxMobile = navigator.userAgent.toLowerCase().includes('firefox') && 
+                               (navigator.userAgent.toLowerCase().includes('mobile') || 
+                                navigator.userAgent.toLowerCase().includes('tablet'));
         
-        if (!isVisible) {
-          this.overlayElement.style.display = 'none';
+        if (isFirefoxMobile) {
+          console.log('🦦 Firefox mobile detected - forcing UI visible for debugging');
+          this.overlayElement.style.display = 'flex';
+          this.overlayElement.style.visibility = 'visible';
+          this.overlayElement.style.opacity = '1';
+          return;
+        }
+        
+        // Normal visibility state loading
+        try {
+          const result = await chrome.storage.local.get('consolidatorVisible');
+          const isVisible = result.consolidatorVisible !== false; // Default to visible
+          
+          if (!isVisible) {
+            this.overlayElement.style.display = 'none';
+          }
+        } catch (error) {
+          console.error('🦦 Error loading saved state:', error);
+          // Default to visible on error
+          this.overlayElement.style.display = 'flex';
         }
       }
       
@@ -11171,6 +11228,24 @@ body {
         } else {
           // Shown
           this.adjustPageLayout();
+        }
+      }
+      
+      show() {
+        // Force the overlay to be visible
+        if (this.overlayElement) {
+          this.overlayElement.style.display = 'flex';
+          this.overlayElement.style.visibility = 'visible';
+          this.overlayElement.style.opacity = '1';
+          console.log('🦦 Overlay forced visible');
+          
+          // Save state
+          chrome.storage.local.set({ consolidatorVisible: true });
+          
+          // Adjust page layout
+          this.adjustPageLayout();
+        } else {
+          console.error('🦦 No overlay element to show');
         }
       }
     
@@ -11217,7 +11292,33 @@ body {
           </div>
         `;
         
-        document.body.appendChild(this.overlayElement);
+        // Robust DOM ready check before appending
+        const appendOverlay = () => {
+          if (!document.body) {
+            console.log('🦦 document.body not ready, waiting...');
+            // Try again in 100ms
+            setTimeout(appendOverlay, 100);
+            return;
+          }
+          
+          try {
+            document.body.appendChild(this.overlayElement);
+            console.log('🦦 Overlay successfully appended to body');
+          } catch (error) {
+            console.error('🦦 Error appending overlay:', error);
+            // Try one more time after a delay
+            setTimeout(() => {
+              try {
+                document.body.appendChild(this.overlayElement);
+                console.log('🦦 Overlay appended on retry');
+              } catch (retryError) {
+                console.error('🦦 Failed to append overlay after retry:', retryError);
+              }
+            }, 500);
+          }
+        };
+        
+        appendOverlay();
         
         // Verify the overlay was created and is visible
         const verifyOverlay = document.getElementById('otter-consolidator-overlay');
@@ -15006,6 +15107,9 @@ body {
     console.log('✅ Otter debug helpers loaded. Type otterDebug.help() for commands.');
 
     // ----- content/content.js -----
+    // Declare component variables at module level so they're accessible throughout the script
+    let itemMatcher, orderBatcher, categoryManager, batchManager, orderExtractor, overlayUI, prepTimeTracker;
+    
     (async function() {
       console.log('🔴 OTTER EXTENSION LOADED AT:', new Date().toISOString());
       console.log('🔴 Page URL:', window.location.href);
@@ -15301,8 +15405,6 @@ body {
       });
       
       // Initialize components with error checking
-      let itemMatcher, orderBatcher, categoryManager, batchManager, orderExtractor, overlayUI, prepTimeTracker;
-      
       // Create components immediately
       async function createComponents() {
         try {
@@ -16348,11 +16450,58 @@ body {
       addTriggerButton();
       
       // Initialize when DOM is ready
+      const initWithErrorHandling = async () => {
+        try {
+          console.log('🦦 Starting initialization with error handling...');
+          addDebugIndicator('🦦 Creating components...', 'blue');
+          
+          // Create components first
+          await createComponents();
+          
+          // Then initialize
+          await init();
+          
+          // Force show UI on Firefox mobile for debugging
+          if (navigator.userAgent.toLowerCase().includes('firefox') && 
+              (navigator.userAgent.toLowerCase().includes('mobile') || 
+               navigator.userAgent.toLowerCase().includes('tablet'))) {
+            console.log('🦦 Firefox mobile detected - forcing UI visible');
+            if (window.otterOverlayUI && window.otterOverlayUI.show) {
+              window.otterOverlayUI.show();
+            }
+          }
+          
+          addDebugIndicator('🦦 Initialized!', 'green');
+        } catch (error) {
+          console.error('🦦 Initialization error:', error);
+          addDebugIndicator('🦦 Error: ' + error.message, 'red');
+          
+          // Show detailed error info
+          const errorDetails = document.createElement('div');
+          errorDetails.style.cssText = `
+            position: fixed;
+            top: 60px;
+            right: 10px;
+            z-index: 999999;
+            background: darkred;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            max-width: 300px;
+            word-wrap: break-word;
+          `;
+          errorDetails.textContent = error.stack || error.toString();
+          document.body.appendChild(errorDetails);
+        }
+      };
+      
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', initWithErrorHandling);
       } else {
         // Small delay to ensure all scripts are loaded
-        setTimeout(init, 100);
+        setTimeout(initWithErrorHandling, 100);
       }
       
       // Also listen for navigation changes (for SPAs)
