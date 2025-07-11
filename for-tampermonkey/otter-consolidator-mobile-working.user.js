@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Otter Order Consolidator v4 - Tampermonkey Edition
+// @name         Otter Order Consolidator v4 - Tampermonkey Edition (Fixed)
 // @namespace    http://tampermonkey.net/
-// @version      4.6.0
-// @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets (Using Working Version)
-// @author       HHG Team
+// @version      4.0.4
+// @description  Consolidate orders and print batch labels for Otter (Tablet Compatible)
+// @author       Your Name
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
 // @match        https://tryotter.com/*
