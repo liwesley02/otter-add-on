@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.3.0
+// @version      4.3.1
 // @description  Consolidate orders and print batch labels for Otter - Works on Firefox Desktop & Mobile
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -18,7 +18,7 @@
 // @grant        GM_notification
 // @grant        window.close
 // @grant        window.focus
-// @run-at       document-idle
+// @run-at       document-end
 // @connect      localhost
 // @connect      tryotter.com
 // @connect      *.tryotter.com
@@ -26,6 +26,62 @@
 
 (function() {
     'use strict';
+    
+    // Immediate feedback that script is loaded
+    console.log('🦦 Otter Order Consolidator v4 (Tampermonkey) - Script injected!', {
+        url: window.location.href,
+        time: new Date().toISOString(),
+        readyState: document.readyState
+    });
+    
+    // Add visible indicator that script is running
+    function addDebugIndicator(text = '🦦 Loading...', color = 'orange') {
+        const existing = document.getElementById('otter-debug-indicator');
+        if (existing) existing.remove();
+        
+        const indicator = document.createElement('div');
+        indicator.id = 'otter-debug-indicator';
+        indicator.textContent = text;
+        indicator.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 999999;
+            background: ${color};
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        `;
+        indicator.onclick = () => {
+            console.log('🦦 Manual trigger clicked');
+            if (window.init) {
+                window.init();
+            } else {
+                console.error('Init function not found');
+            }
+        };
+        
+        if (document.body) {
+            document.body.appendChild(indicator);
+        } else {
+            // If body doesn't exist yet, wait for it
+            const observer = new MutationObserver(() => {
+                if (document.body) {
+                    document.body.appendChild(indicator);
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.documentElement, { childList: true });
+        }
+        return indicator;
+    }
+    
+    // Show initial loading indicator
+    addDebugIndicator('🦦 Script loaded...');
 
     // ===== GM Storage Wrapper =====
     // Provides Chrome storage API compatibility using Tampermonkey storage
@@ -3209,6 +3265,7 @@ body {
     // Content scripts will be concatenated here
     
     console.log('Otter Order Consolidator v4 (Tampermonkey) - Initializing...');
+    addDebugIndicator('🦦 Initializing components...', 'blue');
 
     
     // ===== Combined Content Scripts =====
@@ -15245,8 +15302,12 @@ body {
       window.otterComponentsReady = false;
       
       // Create components early
+      console.log('🦦 Creating components...');
+      addDebugIndicator('🦦 Creating components...', 'purple');
+      
       createComponents().then(() => {
         console.log('[Components] All components created successfully!');
+        addDebugIndicator('🦦 Components ready!', 'green');
         window.otterComponentsReady = true;
         
         // Initialize authentication UI after components are created
@@ -15259,6 +15320,7 @@ body {
       }).catch(error => {
         console.error('[CRITICAL] Failed to create components:', error);
         console.error('Stack trace:', error.stack);
+        addDebugIndicator('🦦 ERROR: ' + error.message, 'red');
         // Store error globally for debugging
         window.componentsError = error;
         window.otterComponentsReady = false;
@@ -15421,11 +15483,22 @@ body {
         try {
           // Check what page we're on
           const currentUrl = window.location.href;
-          const isMainOrdersPage = currentUrl === 'https://app.tryotter.com/orders' || 
-                                  currentUrl === 'https://app.tryotter.com/orders/';
+          console.log('[init] Current URL:', currentUrl);
+          
+          // More flexible URL matching
+          const isOtterDashboard = currentUrl.includes('tryotter.com');
+          const isOrdersRelatedPage = currentUrl.includes('/orders');
+          const isMainOrdersPage = isOrdersRelatedPage && !currentUrl.match(/\/orders\/[a-f0-9-]+$/);
           
           // Check if we're on an order detail page (has UUID in URL)
           const isOrderDetailPage = /\/orders\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/.test(currentUrl);
+          
+          console.log('[init] Page detection:', {
+              isOtterDashboard,
+              isOrdersRelatedPage,
+              isMainOrdersPage,
+              isOrderDetailPage
+          });
           
           if (isOrderDetailPage) {
             console.log('On order detail page - offering navigation to orders list');
@@ -16124,6 +16197,51 @@ body {
       // Check for force leader mode in URL
       const urlParams = new URLSearchParams(window.location.search);
       window.FORCE_LEADER = urlParams.get('leader') === 'true';
+      
+      // Add a floating trigger button for manual activation
+      function addTriggerButton() {
+        const btn = document.createElement('button');
+        btn.id = 'otter-manual-trigger';
+        btn.innerHTML = '🦦';
+        btn.title = 'Click to manually trigger Otter Consolidator';
+        btn.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          background: #0055A4;
+          color: white;
+          border: none;
+          font-size: 24px;
+          cursor: pointer;
+          z-index: 999999;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          transition: transform 0.2s;
+        `;
+        btn.onmouseover = () => btn.style.transform = 'scale(1.1)';
+        btn.onmouseout = () => btn.style.transform = 'scale(1)';
+        btn.onclick = () => {
+          console.log('🦦 Manual trigger button clicked');
+          addDebugIndicator('🦦 Manual init...', 'blue');
+          if (window.init) {
+            window.init();
+          }
+          if (window.overlayUI && window.overlayUI.show) {
+            window.overlayUI.show();
+          }
+        };
+        
+        if (document.body) {
+          document.body.appendChild(btn);
+        } else {
+          setTimeout(() => addTriggerButton(), 100);
+        }
+      }
+      
+      // Add trigger button
+      addTriggerButton();
       
       // Initialize when DOM is ready
       if (document.readyState === 'loading') {
