@@ -10938,18 +10938,37 @@ body {
         const styleEl = document.createElement('style');
         styleEl.id = 'otter-layout-styles';
         styleEl.textContent = `
-          /* Force the main Otter content to shrink when overlay is visible */
-          body:has(#otter-consolidator-overlay:not([style*="display: none"])) > div:first-of-type:not(#otter-consolidator-overlay):not(.otter-floating-toggle):not(.otter-mode-toggle) {
-            margin-right: 40vw !important;
-            width: 60vw !important;
-            transition: all 0.3s ease;
+          /* Desktop: shrink content when overlay visible */
+          @media (min-width: 1025px) {
+            body:has(#otter-consolidator-overlay:not([style*="display: none"]):not(.collapsed)) > div:first-of-type:not(#otter-consolidator-overlay):not(.otter-floating-toggle):not(.otter-mode-toggle) {
+              margin-right: min(40vw, 600px) !important;
+              transition: all 0.3s ease;
+            }
+            
+            body:has(#otter-consolidator-overlay:not([style*="display: none"]):not(.collapsed)) #root {
+              margin-right: min(40vw, 600px) !important;
+              transition: all 0.3s ease;
+            }
           }
           
-          /* Alternative selector for different page structures */
-          body:has(#otter-consolidator-overlay:not([style*="display: none"])) #root {
-            margin-right: 40vw !important;
-            width: 60vw !important;
-            transition: all 0.3s ease;
+          /* Tablet: partial content adjustment */
+          @media (min-width: 769px) and (max-width: 1024px) {
+            body:has(#otter-consolidator-overlay:not([style*="display: none"]):not(.collapsed)) > div:first-of-type:not(#otter-consolidator-overlay):not(.otter-floating-toggle):not(.otter-mode-toggle) {
+              margin-right: 70% !important;
+              transition: all 0.3s ease;
+            }
+            
+            body:has(#otter-consolidator-overlay:not([style*="display: none"]):not(.collapsed)) #root {
+              margin-right: 70% !important;
+              transition: all 0.3s ease;
+            }
+          }
+          
+          /* Mobile: overlay covers entire screen */
+          @media (max-width: 768px) {
+            body:has(#otter-consolidator-overlay:not([style*="display: none"]):not(.collapsed)) {
+              overflow: hidden !important;
+            }
           }
           
           /* Ensure floating buttons stay on top */
@@ -15300,6 +15319,19 @@ body {
       
       // Track component readiness globally
       window.otterComponentsReady = false;
+      
+      // Inject overlay styles early for mobile visibility
+      console.log('🦦 Injecting overlay styles early...');
+      if (typeof GM_addStyle !== 'undefined') {
+        GM_addStyle(overlayStyles);
+        console.log('🦦 Overlay styles injected via GM_addStyle');
+      } else {
+        // Fallback method
+        const styleEl = document.createElement('style');
+        styleEl.textContent = overlayStyles;
+        (document.head || document.documentElement).appendChild(styleEl);
+        console.log('🦦 Overlay styles injected via createElement');
+      }
       
       // Create components early
       console.log('🦦 Creating components...');
