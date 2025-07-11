@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.3.1
-// @description  Consolidate orders and print batch labels for Otter - Works on Firefox Desktop & Mobile
+// @version      4.4.0
+// @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -267,23 +267,76 @@
         
 /* ----- styles/overlay.css ----- */
 #otter-consolidator-overlay {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 40vw;
-  min-width: 800px;
-  max-width: 1200px;
-  height: 100vh;
-  background: #1a1a1a;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
-  z-index: 999999;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 13px;
-  transition: transform 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  color: #ffffff;
-  overflow: hidden;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100%;
+  max-width: 600px;
+  height: 100vh !important;
+  background: #1a1a1a !important;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5) !important;
+  z-index: 999999 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 14px !important;
+  transition: transform 0.3s ease !important;
+  display: flex !important;
+  flex-direction: column !important;
+  color: #ffffff !important;
+  overflow: hidden !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Mobile specific styles */
+@media (max-width: 768px) {
+  #otter-consolidator-overlay {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    left: 0 !important;
+    right: 0 !important;
+    font-size: 16px !important;
+  }
+  
+  .otter-header {
+    font-size: 16px !important;
+    padding: 12px !important;
+  }
+  
+  .batch-section {
+    margin-bottom: 12px !important;
+  }
+  
+  .wave-items-wrapper {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .batch-controls {
+    padding: 12px !important;
+  }
+  
+  button, .otter-btn {
+    min-height: 44px !important;
+    padding: 12px 16px !important;
+    font-size: 16px !important;
+  }
+}
+
+/* Tablet specific styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+  #otter-consolidator-overlay {
+    width: 70% !important;
+    max-width: 600px !important;
+  }
+}
+
+/* Desktop styles */
+@media (min-width: 1025px) {
+  #otter-consolidator-overlay {
+    width: 40vw !important;
+    min-width: 500px !important;
+    max-width: 600px !important;
+  }
 }
 
 /* Ensure the main Otter content is properly adjusted */
@@ -297,25 +350,35 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   z-index: 999999;
 }
 
-/* Floating Toggle Button */
+/* Floating Toggle Button - Mobile Optimized */
 .otter-floating-toggle {
   position: fixed !important;
   bottom: 20px !important;
   right: 20px !important;
-  width: 50px !important;
-  height: 50px !important;
+  width: 60px !important;
+  height: 60px !important;
   background: #007bff !important;
   color: white !important;
   border: none !important;
   border-radius: 50% !important;
-  font-size: 24px !important;
+  font-size: 28px !important;
   cursor: pointer !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
   z-index: 1000000 !important;
   transition: all 0.2s ease !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+@media (max-width: 768px) {
+  .otter-floating-toggle {
+    width: 56px !important;
+    height: 56px !important;
+    bottom: 16px !important;
+    right: 16px !important;
+  }
 }
 
 .otter-floating-toggle:hover {
@@ -323,25 +386,34 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   transform: scale(1.1) !important;
 }
 
-/* Mode Toggle Button - Moved to avoid overlap */
+/* Mode Toggle Button - Mobile Optimized */
 .otter-mode-toggle {
   position: fixed !important;
-  bottom: 80px !important;  /* Above the main toggle button */
+  bottom: 90px !important;
   right: 20px !important;
   background: #333 !important;
   color: white !important;
   border: 1px solid #555 !important;
-  border-radius: 20px !important;
-  padding: 6px 12px !important;  /* Smaller padding */
-  font-size: 12px !important;  /* Smaller font */
+  border-radius: 25px !important;
+  padding: 8px 16px !important;
+  font-size: 14px !important;
   cursor: pointer !important;
   z-index: 1000000 !important;
   transition: all 0.2s ease !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   display: flex !important;
   align-items: center !important;
-  gap: 4px !important;
-  opacity: 0.8 !important;
+  gap: 6px !important;
+  opacity: 0.9 !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+@media (max-width: 768px) {
+  .otter-mode-toggle {
+    bottom: 80px !important;
+    right: 16px !important;
+    font-size: 13px !important;
+  }
 }
 
 .otter-mode-toggle:hover {
