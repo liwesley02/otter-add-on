@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.0.0
+// @version      4.8.0
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -50,11 +50,9 @@
         if (document.body) {
             document.body.appendChild(loadingIndicator);
             
-            // REMOVED: Manual trigger button per user request
-            // const triggerBtn = document.createElement('button');
-            // triggerBtn.innerHTML = '📦 Open Consolidator';
-            /* Commenting out the trigger button
+            // Add a simple button to manually trigger the consolidator
             const triggerBtn = document.createElement('button');
+            triggerBtn.innerHTML = '📦 Open Consolidator';
             triggerBtn.style.cssText = `
                 position: fixed;
                 bottom: 20px;
@@ -205,7 +203,6 @@
                 }, 500);
             };
             document.body.appendChild(triggerBtn);
-            */
             
             setTimeout(() => {
                 loadingIndicator.style.background = '#4CAF50';
@@ -407,7 +404,7 @@
   position: fixed;
   top: 0;
   right: 0;
-  width: 46vw;  /* Increased by 15% for mobile */
+  width: 40vw;
   min-width: 800px;
   max-width: 1200px;
   height: 100vh;
@@ -5983,13 +5980,12 @@ body {
     window.BatchManager = BatchManager;
 
     // ----- components/labelDataTransformer.js -----
-    /* Removed for mobile version - Label printing not supported on Firefox mobile
     /**
      * Label Data Transformer
      * Converts batch data from the order consolidator into label-ready format
      * Handles complex meal decomposition and modifier classification
      */
-    /*
+    
     class LabelDataTransformer {
       constructor() {
         // Meal items that need special decomposition
@@ -6462,16 +6458,14 @@ body {
     if (typeof module !== 'undefined' && module.exports) {
       module.exports = LabelDataTransformer;
     }
-    */
 
     // ----- components/batchLabelPrinter.js -----
-    /* Removed for mobile version - Label printing not supported on Firefox mobile
     /**
      * Batch Label Printer
      * Manages the printing of labels for entire batches
      * Interfaces with the label printer HTML and handles Chrome extension messaging
      */
-    /*
+    
     class BatchLabelPrinter {
       constructor() {
         this.labelTransformer = new LabelDataTransformer();
@@ -6777,7 +6771,6 @@ body {
     if (typeof module !== 'undefined' && module.exports) {
       module.exports = BatchLabelPrinter;
     }
-    */
 
     // ----- components/prepTimeTracker.js -----
     /**
@@ -11367,7 +11360,7 @@ body {
         this.lastOrderCount = 0;
         this.lastOrderIds = new Set();
         this.isMonitoringChanges = false;
-        // this.batchLabelPrinter = new BatchLabelPrinter(); // Removed for mobile
+        this.batchLabelPrinter = new BatchLabelPrinter();
       }
     
       init() {
@@ -11410,15 +11403,15 @@ body {
         styleEl.textContent = `
           /* Force the main Otter content to shrink when overlay is visible */
           body:has(#otter-consolidator-overlay:not([style*="display: none"])) > div:first-of-type:not(#otter-consolidator-overlay):not(.otter-floating-toggle):not(.otter-mode-toggle) {
-            margin-right: 46vw !important;
-            width: 54vw !important;
+            margin-right: 40vw !important;
+            width: 60vw !important;
             transition: all 0.3s ease;
           }
           
           /* Alternative selector for different page structures */
           body:has(#otter-consolidator-overlay:not([style*="display: none"])) #root {
-            margin-right: 46vw !important;
-            width: 54vw !important;
+            margin-right: 40vw !important;
+            width: 60vw !important;
             transition: all 0.3s ease;
           }
           
@@ -11576,7 +11569,9 @@ body {
               <span class="prep-time-hour" title="Last hour average">--m</span>
               <span class="prep-time-today" title="Today's average">--m</span>
             </div>
-            <!-- API status removed per user request -->
+            <div class="otter-api-status" id="api-status-container">
+              <!-- API status will be inserted here -->
+            </div>
           </div>
           
           <div class="mode-indicator" id="mode-indicator">
@@ -11626,7 +11621,24 @@ body {
         this.startBatchTimer();
         this.startPrepTimeUpdates();
         
-        // REMOVED: API status updates per user request
+        // Initial API status update with delay to ensure API client is loaded
+        setTimeout(() => {
+          this.updateAPIStatus();
+        }, 1000);
+        
+        // Update API status periodically
+        setInterval(() => {
+          this.updateAPIStatus();
+        }, 5000);
+        
+        // Listen for auth status changes
+        window.addEventListener('message', (event) => {
+          if (event.data.type === 'OTTER_AUTH_SUCCESS' || 
+              event.data.type === 'OTTER_AUTH_LOGOUT' ||
+              event.data.type === 'OTTER_API_CONNECTION_STATUS') {
+            this.updateAPIStatus();
+          }
+        });
       }
     
       render() {
@@ -11796,7 +11808,9 @@ body {
                   <span>Oldest: ${oldestWaitTime}m</span>
                   <span>${itemCount} items</span>
                   ${this.getEstimatedCompletionHtml(oldestWaitTime)}
-                  <!-- Label printing removed for mobile version -->
+                  <button class="print-labels-btn" data-batch-id="${batch.id}" title="Print labels for this batch">
+                    🏷️ Print Labels
+                  </button>
                 </div>
               </div>
               
@@ -12102,7 +12116,30 @@ body {
           });
         });
         
-        // Print button listeners removed for mobile version
+        // Add print labels button listeners
+        container.querySelectorAll('.print-labels-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Get the button element even if a child element was clicked
+            const button = e.target.closest('.print-labels-btn');
+            const batchId = button?.dataset.batchId;
+            if (batchId) {
+              console.log('[OverlayUI] Print button clicked for batch:', batchId);
+              await this.handlePrintLabels(batchId);
+            } else {
+              console.error('[OverlayUI] No batch ID found on print button');
+            }
+          });
+        });
+        
+        // Add individual order print button listeners
+        container.querySelectorAll('.print-order-labels-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const orderId = e.target.dataset.orderId;
+            await this.handlePrintOrderLabels(orderId);
+          });
+        });
         
         // Add order note click listeners
         container.querySelectorAll('.order-notes.clickable').forEach(noteSpan => {
@@ -12176,7 +12213,9 @@ body {
               <div class="order-details">
                 <span class="order-items">${itemCount} items</span>
                 ${order.orderNotes ? `<span class="order-notes clickable" data-order-number="${order.orderNumber}" data-customer="${customerName}" data-notes="${order.orderNotes.replace(/"/g, '&quot;')}" title="Click to view note">📝 Note</span>` : ''}
-                <!-- Print button removed for mobile version -->
+                <button class="print-order-labels-btn" data-order-id="${order.id}" title="Print labels for this order">
+                  🏷️ Print
+                </button>
               </div>
             </div>
           `;
@@ -12783,13 +12822,75 @@ body {
       }
       
       updateAPIStatus() {
-        // REMOVED: KDS connection UI per user request
         const container = this.overlayElement?.querySelector('#api-status-container');
         if (!container) {
+          console.log('[OverlayUI] API status container not found');
           return;
         }
-        // Clear the container - no KDS status shown
-        container.innerHTML = '';
+        
+        const apiClient = window.otterAPIClient;
+        if (!apiClient) {
+          console.log('[OverlayUI] API client not initialized');
+          container.innerHTML = '';
+          return;
+        }
+        
+        const isAuth = apiClient.isAuthenticated();
+        console.log('[OverlayUI] API Status Update:', {
+          authenticated: isAuth,
+          hasToken: !!apiClient.token,
+          restaurantId: apiClient.restaurantId,
+          restaurantName: apiClient.restaurantName
+        });
+        
+        if (isAuth) {
+          // Only show connected if we actually have valid credentials
+          const statusColor = '#28a745';
+          const statusText = 'Connected to Mock API';
+          
+          container.innerHTML = `
+            <div class="api-status connected" style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 12px;
+              padding: 4px 8px;
+              background: ${statusColor}20;
+              border-radius: 4px;
+              cursor: pointer;
+            " title="${apiClient.restaurantName || 'Test Restaurant'}">
+              <span style="width: 8px; height: 8px; background: ${statusColor}; border-radius: 50%;"></span>
+              <span style="color: ${statusColor};">${statusText}</span>
+            </div>
+          `;
+          
+          container.querySelector('.api-status').addEventListener('click', () => {
+            if (window.otterAuthUI) {
+              window.otterAuthUI.showAccountMenu();
+            }
+          });
+        } else {
+          container.innerHTML = `
+            <button class="api-login-btn" style="
+              padding: 4px 12px;
+              background: #007bff;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              font-size: 12px;
+              cursor: pointer;
+              font-weight: 500;
+            ">
+              Login to KDS
+            </button>
+          `;
+          
+          container.querySelector('.api-login-btn').addEventListener('click', () => {
+            if (window.otterAuthUI) {
+              window.otterAuthUI.showLoginModal();
+            }
+          });
+        }
       }
     
       startBatchTimer() {
@@ -14158,7 +14259,6 @@ body {
         return element[key];
       }
       
-      /* Removed for mobile version
       async handlePrintLabels(batchId) {
         console.log('[OverlayUI] Print labels requested for batch:', batchId);
         
@@ -14297,20 +14397,18 @@ body {
           this.showNotification('Failed to print order labels', 'error');
         }
       }
-      */
     }
     
     // Make available globally
     window.OverlayUI = OverlayUI;
 
     // ----- content/labelPreviewModal.js -----
-    /* Removed for mobile version - Label printing not supported on Firefox mobile
     /**
      * Label Preview Modal
      * Shows a preview of labels before printing
      * Allows selection of specific orders within a batch
      */
-    /*
+    
     class LabelPreviewModal {
       constructor() {
         this.modalElement = null;
@@ -14725,7 +14823,6 @@ body {
     
     // Make available globally
     window.LabelPreviewModal = LabelPreviewModal;
-    */
 
     // ----- content/debugHelper.js -----
     console.log('[DebugHelper.js] Script loaded at:', new Date().toISOString());
