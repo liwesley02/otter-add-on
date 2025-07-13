@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.7.1
+// @version      4.8.0
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -1398,7 +1398,7 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 .new-badge {
   background: #ffc107;
   color: #000;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: bold;
   padding: 3px 8px;
   border-radius: 4px;
