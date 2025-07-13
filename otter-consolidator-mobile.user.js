@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.7.0
+// @version      4.7.1
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -1015,6 +1015,7 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   flex: 1;
   padding: 15px;
   overflow-y: auto;
+  font-size: 16px;
 }
 
 .size-section {
@@ -1056,10 +1057,11 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px;
+  padding: 12px;
   background: #f8f9fa;
   border-radius: 4px;
   transition: background 0.2s;
+  min-height: 48px;
 }
 
 .batch-item:hover {
@@ -1074,14 +1076,16 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 }
 
 .item-name {
-  font-weight: 500;
+  font-weight: 600;
   color: #2c3e50;
+  font-size: 18px;
+  line-height: 1.4;
 }
 
 .item-quantity {
   font-weight: bold;
   color: #3498db;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 /* Completed order styles */
@@ -1211,8 +1215,9 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 }
 
 .item-price {
-  font-weight: 500;
+  font-weight: 600;
   color: #27ae60;
+  font-size: 16px;
 }
 
 .add-to-wave {
@@ -1393,11 +1398,11 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 .new-badge {
   background: #ffc107;
   color: #000;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: bold;
-  padding: 2px 6px;
-  border-radius: 3px;
-  margin-right: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-right: 10px;
 }
 
 /* Category-specific styling */
@@ -1577,9 +1582,9 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 /* Size badge */
 .size-badge {
   color: white;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
   border-radius: 3px;
   margin-left: 5px;
   text-transform: capitalize;
@@ -1653,9 +1658,9 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 
 /* Rice type badges */
 .rice-type-badge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
   margin-left: 5px;
   text-transform: uppercase;
@@ -1665,9 +1670,9 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 .protein-badge {
   background: #17a2b8;
   color: white;
-  padding: 2px 10px;
+  padding: 4px 10px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   margin-left: 5px;
   white-space: nowrap;
@@ -1995,7 +2000,7 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 }
 
 .wave-category-header {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   margin: 0 0 10px 0;
   padding: 8px 12px;
@@ -2019,7 +2024,7 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   border-radius: 3px;
   color: #e0e0e0;
   position: relative;
-  font-size: 13px;
+  font-size: 16px;
   min-height: 36px;
 }
 
@@ -2062,14 +2067,17 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   margin-right: 10px;
   min-width: 30px;
   padding-top: 2px;
+  font-size: 18px;
 }
 
 .wave-item-name {
   flex: 1;
   color: #ffffff;
   word-wrap: break-word;
-  line-height: 1.3;
+  line-height: 1.4;
   padding-right: 10px;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .size-estimated {
@@ -2637,6 +2645,9 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 
 .modifier-name {
   flex: 1;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #b0b0b0;
 }
 
 .modifier-price {
@@ -2649,8 +2660,8 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 .batch-item {
   background: #2a2a2a;
   border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
   display: flex;
   flex-direction: column;
   transition: all 0.2s ease;
@@ -2663,8 +2674,8 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 .batch-item .item-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 5px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .batch-item .item-actions {
@@ -2840,6 +2851,254 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   0% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(1.2); }
   100% { opacity: 1; transform: scale(1); }
+}
+
+/* Order Notes Styling */
+.order-card.has-notes {
+  border: 2px solid #ffa726;
+  background: rgba(255, 167, 38, 0.1);
+}
+
+.order-notes.clickable {
+  cursor: pointer;
+  color: #ffa726;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.order-notes.clickable:hover {
+  color: #ffb74d;
+  transform: scale(1.1);
+}
+
+/* Order Note Modal */
+.otter-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000001;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.otter-modal-backdrop.show {
+  opacity: 1;
+}
+
+.otter-modal-backdrop.fade-out {
+  opacity: 0;
+}
+
+.otter-note-modal {
+  background: #2a2a2a;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.otter-modal-backdrop.show .otter-note-modal {
+  transform: scale(1);
+}
+
+.otter-note-modal .modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #404040;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.otter-note-modal .modal-header h3 {
+  margin: 0;
+  color: #ffa726;
+  font-size: 18px;
+}
+
+.otter-note-modal .modal-close {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.otter-note-modal .modal-close:hover {
+  color: #fff;
+}
+
+.otter-note-modal .modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.otter-note-modal .modal-customer {
+  margin: 0 0 15px 0;
+  color: #999;
+}
+
+.otter-note-modal .modal-note-content {
+  background: #1a1a1a;
+  padding: 15px;
+  border-radius: 4px;
+  color: #fff;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.otter-note-modal .modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #404040;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.otter-note-modal .modal-acknowledge {
+  background: #ffa726;
+  color: #000;
+  border: none;
+  padding: 10px 30px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.otter-note-modal .modal-acknowledge:hover {
+  background: #ffb74d;
+}
+
+/* Item Type Badges */
+.protein-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #ff6b6b;
+  color: white;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.rice-type-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #4ecdc4;
+  color: white;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.rice-type-badge.garlic-butter {
+  background: #f39c12;
+}
+
+.rice-type-badge.fried-rice {
+  background: #e67e22;
+}
+
+.rice-type-badge.noodles {
+  background: #9b59b6;
+}
+
+.rice-type-badge.white-rice {
+  background: #95a5a6;
+}
+
+/* Dumpling Badges */
+.dumpling-protein-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #8e24aa;
+  color: white;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.dumpling-sauce-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #e91e63;
+  color: white;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+/* Clear Button Styling */
+.clear-button-container {
+  display: flex;
+  align-items: center;
+  margin: 0 15px;
+}
+
+.clear-all-btn {
+  padding: 8px 20px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.clear-all-btn:hover {
+  background: #c82333;
+  transform: scale(1.05);
+}
+
+.clear-all-btn:active {
+  background: #bd2130;
+  transform: scale(0.98);
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  .clear-all-btn {
+    padding: 12px 24px;
+    font-size: 16px;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .clear-button-container {
+    position: static;
+    margin: 0;
+  }
+  
+  .batch-controls {
+    padding-bottom: 80px; /* Make room for fixed button */
+  }
 }
 
 
@@ -5271,14 +5530,29 @@ body {
           });
         });
         
-        // Sort all orders by timestamp (oldest first) for true FIFO
+        // Sort all orders by elapsed time (highest first) - orders with highest wait time at top
         const sortedOrders = [...orders].sort((a, b) => {
-          // First by timestamp if available
-          if (a.timestamp && b.timestamp) {
-            return a.timestamp - b.timestamp;
-          }
-          // Then by wait time (higher wait time = older order)
-          return (b.waitTime || 0) - (a.waitTime || 0);
+          // Calculate elapsed time for each order
+          const getElapsedMinutes = (order) => {
+            // If we have elapsedTime directly, use it
+            if (order.elapsedTime) return order.elapsedTime;
+            
+            // If we have orderedAt timestamp, calculate from that
+            if (order.orderedAt) {
+              const orderedDate = new Date(order.orderedAt);
+              const now = new Date();
+              return Math.floor((now - orderedDate) / 60000);
+            }
+            
+            // Fall back to waitTime
+            return order.waitTime || 0;
+          };
+          
+          const aElapsed = getElapsedMinutes(a);
+          const bElapsed = getElapsedMinutes(b);
+          
+          // Sort by highest elapsed time first (descending order)
+          return bElapsed - aElapsed;
         });
         
         // Clear items from all UNLOCKED batches only
@@ -11388,15 +11662,9 @@ body {
               <input type="number" id="batch-capacity" class="batch-capacity-input" 
                      value="${this.batchManager.maxBatchCapacity}" min="1" max="20">
             </div>
-            <div class="button-group">
-              <button class="refresh-btn" id="manual-refresh" title="Re-scan current page for orders">
-                🔄 Refresh
-              </button>
-              <button class="refresh-btn" id="api-refresh" style="background: #007bff;" title="Reload page to get fresh data">
-                🌐 API
-              </button>
-              <button class="refresh-btn" id="clear-completed" style="background: #dc3545;" title="Clear all cached data and orders">
-                🗑️ Clear All
+            <div class="clear-button-container">
+              <button class="clear-all-btn" id="clear-completed" title="Clear all cached data and orders">
+                🗑️ Clear All Orders
               </button>
             </div>
             <div class="debug-toggle" style="margin-left: auto;">
@@ -11440,51 +11708,6 @@ body {
           });
         }
         
-        // Add manual refresh button listener
-        const refreshBtn = footerContainer.querySelector('#manual-refresh');
-        if (refreshBtn) {
-          refreshBtn.addEventListener('click', () => {
-            if (!this.isScrapingMode) {
-              this.showNotification('Enable scraping mode to refresh orders', 'warning');
-              return;
-            }
-            
-            refreshBtn.classList.add('refreshing');
-            refreshBtn.disabled = true;
-            
-            // Check for completed orders first
-            this.checkForCompletedOrders();
-            
-            // Always use detailed extraction to get actual sizes
-            this.extractAndRefreshDetailed().then(() => {
-              refreshBtn.classList.remove('refreshing');
-              refreshBtn.disabled = false;
-            });
-          });
-        }
-        
-        // Add API refresh button listener
-        const apiRefreshBtn = footerContainer.querySelector('#api-refresh');
-        if (apiRefreshBtn) {
-          apiRefreshBtn.addEventListener('click', () => {
-            apiRefreshBtn.classList.add('refreshing');
-            apiRefreshBtn.disabled = true;
-            
-            // Clear order cache to force fresh API data
-            if (window.otterOrderCache) {
-              window.otterOrderCache.clear();
-              console.log('[Overlay] Cleared order cache');
-            }
-            
-            // Show notification
-            this.showNotification('Refreshing page to capture API data...', 'info');
-            
-            // Reload the page to trigger fresh API calls
-            setTimeout(() => {
-              window.location.reload();
-            }, 500);
-          });
-        }
         
         // Add debug mode toggle listener
         const debugToggle = footerContainer.querySelector('#debug-mode-toggle');
@@ -11918,6 +12141,16 @@ body {
           });
         });
         
+        // Add order note click listeners
+        container.querySelectorAll('.order-notes.clickable').forEach(noteSpan => {
+          noteSpan.addEventListener('click', (e) => {
+            const orderNumber = e.target.dataset.orderNumber;
+            const customerName = e.target.dataset.customer;
+            const notes = e.target.dataset.notes;
+            this.showOrderNoteModal(orderNumber, notes, customerName);
+          });
+        });
+        
         // Event listeners moved to renderBatchControls()
         } catch (error) {
           console.error('Error in renderBatchView:', error);
@@ -11971,7 +12204,7 @@ body {
           });
           
           html += `
-            <div class="order-card ${isOverdue ? 'overdue' : ''}">
+            <div class="order-card ${isOverdue ? 'overdue' : ''} ${order.orderNotes ? 'has-notes' : ''}">
               <div class="order-header">
                 <span class="order-number">#${order.orderNumber}</span>
                 <span class="order-customer">${customerName}</span>
@@ -11979,7 +12212,7 @@ body {
               </div>
               <div class="order-details">
                 <span class="order-items">${itemCount} items</span>
-                ${order.orderNotes ? `<span class="order-notes" title="${order.orderNotes}">📝 Note</span>` : ''}
+                ${order.orderNotes ? `<span class="order-notes clickable" data-order-number="${order.orderNumber}" data-customer="${customerName}" data-notes="${order.orderNotes.replace(/"/g, '&quot;')}" title="Click to view note">📝 Note</span>` : ''}
                 <button class="print-order-labels-btn" data-order-id="${order.id}" title="Print labels for this order">
                   🏷️ Print
                 </button>
@@ -12154,6 +12387,8 @@ body {
           let proteinBadge = '';
           let riceType = '';
           let riceTypeClass = '';
+          let dumplingProtein = '';
+          let dumplingSauce = '';
           
           // Use categoryInfo if available - it's the source of truth
           if (item.categoryInfo) {
@@ -12204,6 +12439,70 @@ body {
                 });
               }
             }
+            
+            // Check for dumplings and extract protein/sauce
+            if (item.category === 'dumplings' || (item.name && item.name.toLowerCase().includes('dumpling'))) {
+              // Extract dumpling type from name or modifiers
+              const itemNameLower = item.name.toLowerCase();
+              if (itemNameLower.includes('pork')) {
+                dumplingProtein = 'Pork';
+              } else if (itemNameLower.includes('chicken')) {
+                dumplingProtein = 'Chicken';
+              } else if (itemNameLower.includes('vegetable') || itemNameLower.includes('veggie')) {
+                dumplingProtein = 'Vegetable';
+              }
+              
+              // Check modifiers for dumpling type if not found in name
+              if (!dumplingProtein && item.modifiers && item.modifiers.length > 0) {
+                item.modifiers.forEach(mod => {
+                  const modName = mod.name.toLowerCase();
+                  if (modName.includes('pork dumpling')) {
+                    dumplingProtein = 'Pork';
+                  } else if (modName.includes('chicken dumpling')) {
+                    dumplingProtein = 'Chicken';
+                  } else if (modName.includes('vegetable dumpling') || modName.includes('veggie dumpling')) {
+                    dumplingProtein = 'Vegetable';
+                  }
+                });
+              }
+              
+              // Extract sauce from modifiers
+              if (item.modifiers && item.modifiers.length > 0) {
+                item.modifiers.forEach(mod => {
+                  const modName = mod.name.toLowerCase();
+                  // Check for common dumpling sauces
+                  if (modName.includes('sauce')) {
+                    if (modName.includes('soy')) {
+                      dumplingSauce = 'Soy';
+                    } else if (modName.includes('ginger')) {
+                      dumplingSauce = 'Ginger';
+                    } else if (modName.includes('chili') || modName.includes('spicy')) {
+                      dumplingSauce = 'Chili';
+                    } else if (modName.includes('sweet')) {
+                      dumplingSauce = 'Sweet';
+                    } else if (modName.includes('sesame')) {
+                      dumplingSauce = 'Sesame';
+                    }
+                  }
+                });
+              }
+            }
+            
+            // For Urban Bowls, check if they have dumplings as part of the meal
+            if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && item.modifiers) {
+              item.modifiers.forEach(mod => {
+                const modName = mod.name.toLowerCase();
+                if (modName.includes('dumpling')) {
+                  if (modName.includes('pork')) {
+                    dumplingProtein = 'Pork';
+                  } else if (modName.includes('chicken')) {
+                    dumplingProtein = 'Chicken';
+                  } else if (modName.includes('vegetable') || modName.includes('veggie')) {
+                    dumplingProtein = 'Vegetable';
+                  }
+                }
+              });
+            }
           }
           
           html += `
@@ -12213,6 +12512,8 @@ body {
                 <span class="item-name">${item.name}</span>
                 ${proteinBadge ? `<span class="protein-badge">${proteinBadge}</span>` : ''}
                 ${riceType ? `<span class="rice-type-badge ${riceTypeClass}">${riceType}</span>` : ''}
+                ${dumplingProtein ? `<span class="dumpling-protein-badge">${dumplingProtein}</span>` : ''}
+                ${dumplingSauce ? `<span class="dumpling-sauce-badge">${dumplingSauce}</span>` : ''}
                 <span class="item-quantity">×${item.totalQuantity}</span>
               </div>
               ${item.modifiers && item.modifiers.length > 0 ? `
@@ -12726,6 +13027,47 @@ body {
           }
         };
       }
+
+      showOrderNoteModal(orderNumber, orderNotes, customerName) {
+        // Create modal backdrop
+        const modalBackdrop = document.createElement('div');
+        modalBackdrop.className = 'otter-modal-backdrop';
+        
+        // Create modal content
+        const modal = document.createElement('div');
+        modal.className = 'otter-note-modal';
+        modal.innerHTML = `
+          <div class="modal-header">
+            <h3>📝 Order Note - #${orderNumber}</h3>
+            <button class="modal-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p class="modal-customer"><strong>Customer:</strong> ${customerName}</p>
+            <div class="modal-note-content">${orderNotes}</div>
+          </div>
+          <div class="modal-footer">
+            <button class="modal-acknowledge">Acknowledge</button>
+          </div>
+        `;
+        
+        modalBackdrop.appendChild(modal);
+        this.overlayElement.appendChild(modalBackdrop);
+        
+        // Add event handlers
+        const closeModal = () => {
+          modalBackdrop.classList.add('fade-out');
+          setTimeout(() => modalBackdrop.remove(), 300);
+        };
+        
+        modal.querySelector('.modal-close').addEventListener('click', closeModal);
+        modal.querySelector('.modal-acknowledge').addEventListener('click', closeModal);
+        modalBackdrop.addEventListener('click', (e) => {
+          if (e.target === modalBackdrop) closeModal();
+        });
+        
+        // Show modal with animation
+        setTimeout(() => modalBackdrop.classList.add('show'), 10);
+      }
     
       async checkForNewOrders() {
         if (this.isExtracting) return; // Don't run if already extracting
@@ -13209,6 +13551,32 @@ body {
               // Update batch assignments with the orders
               const allOrders = this.orderBatcher.getAllOrders();
               this.batchManager.refreshBatchAssignments(allOrders);
+              
+              // Check for new orders with notes
+              const ordersWithNotes = reactOrders.filter(order => {
+                return order.orderNotes && !previousOrderIds.has(order.id);
+              });
+              
+              // Show notification for each new order with notes
+              if (ordersWithNotes.length > 0) {
+                ordersWithNotes.forEach(order => {
+                  const customerName = order.recipientName || order.customerName || 'Customer';
+                  this.showNotification(
+                    `⚠️ Order #${order.orderNumber} has notes - ${customerName}`,
+                    'warning',
+                    5000
+                  );
+                });
+                
+                // If there's only one order with notes, automatically show the modal
+                if (ordersWithNotes.length === 1) {
+                  const order = ordersWithNotes[0];
+                  const customerName = order.recipientName || order.customerName || 'Customer';
+                  setTimeout(() => {
+                    this.showOrderNoteModal(order.orderNumber, order.orderNotes, customerName);
+                  }, 500);
+                }
+              }
               
               // Check for orders that were present before but are missing now
               const currentOrderIds = new Set(reactOrders.map(o => o.id));
