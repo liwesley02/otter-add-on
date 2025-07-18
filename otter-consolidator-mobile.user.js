@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.8.7
+// @version      4.8.8
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -12087,7 +12087,7 @@ body {
                     <li class="${itemClass}"${customerNames}>
                       ${colorDotsHtml}
                       <span class="wave-item-quantity">${window.escapeHtml(item.batchQuantity || item.totalQuantity || 0)}x</span>
-                      <span class="wave-item-name">${this.formatItemNameWithSauce(window.escapeHtml(item.baseName || item.name))}</span>
+                      <span class="wave-item-name">${this.formatItemNameWithSauce(item.baseName || item.name)}</span>
                       ${item.size && item.size !== 'no-size' ? (() => {
                         // Extract the actual size from compound values like "small - Garlic Butter Fried Rice Substitute"
                         const fullSizeText = item.size;
