@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.9.8
+// @version      4.9.9
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -4700,9 +4700,19 @@ body {
         this.itemMatcher = itemMatcher;
         this.batches = new Map();
         this.orders = new Map(); // Store full order data
+        this.processedOrderIds = new Set(); // Track which orders have been added
       }
     
       addOrder(order) {
+        // Check if order has already been processed
+        if (this.processedOrderIds.has(order.id)) {
+          console.log(`[OrderBatcher] Skipping duplicate order: ${order.id}`);
+          return;
+        }
+        
+        // Mark order as processed
+        this.processedOrderIds.add(order.id);
+        
         // Store the full order data
         this.orders.set(order.id, order);
         
@@ -4718,6 +4728,17 @@ body {
           if (!this.batches.has(key)) {
             console.log(`[OrderBatcher] Creating new batch for key: ${key}`);
             console.log(`[OrderBatcher] Item categoryInfo:`, JSON.stringify(item.categoryInfo));
+            
+            // Debug Urban Bowl items
+            if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl')) {
+              console.log(`[OrderBatcher] Urban Bowl item details:`, {
+                name: item.name,
+                modifiers: item.modifiers,
+                categoryInfo: item.categoryInfo,
+                isUrbanBowl: item.isUrbanBowl
+              });
+            }
+            
             this.batches.set(key, {
               name: item.baseName || item.name,
               fullName: item.name, // Full name with modifiers
@@ -4871,6 +4892,7 @@ body {
     
       clearBatches() {
         this.batches.clear();
+        this.processedOrderIds.clear();
       }
     
       removeBatch(itemKey) {
@@ -5420,6 +5442,11 @@ body {
           sizeName: topCategoryName,
           proteinName: subCategoryName
         };
+        
+        // Debug logging for Urban Bowls
+        if (isUrbanBowl) {
+          console.log(`[CategoryManager] Urban Bowl categorization result:`, JSON.stringify(result));
+        }
         
         // Debug log for rice bowls showing as "Other"
         if (isRiceBowl && topCategoryKey === 'other') {
@@ -9374,6 +9401,7 @@ body {
                     else if (modNameLower.includes('dumpling')) {
                       parsedItem.modifiers.dumplingChoice = modName;
                       console.log(`[ReactDataExtractor] Urban Bowl dumpling choice: ${modName}`);
+                      console.log(`[ReactDataExtractor] Full modifiers object:`, JSON.stringify(parsedItem.modifiers));
                     }
                   }
                   // Special handling for rice substitutions on Rice Bowls - append to size
@@ -12862,6 +12890,7 @@ body {
               
               // Also check in categoryInfo modifiers for dumplingChoice
               if (item.categoryInfo && item.categoryInfo.modifiers && item.categoryInfo.modifiers.dumplingChoice) {
+                console.log(`[Urban Bowl Debug] Found dumplingChoice in categoryInfo:`, item.categoryInfo.modifiers.dumplingChoice);
                 const dumplingChoice = item.categoryInfo.modifiers.dumplingChoice.toLowerCase();
                 if (dumplingChoice.includes('pork')) {
                   dumplingProtein = 'Pork';
@@ -12873,6 +12902,9 @@ body {
                   dumplingProtein = 'Vegetable';
                   dumplingClass = 'vegetable';
                 }
+              } else if (item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) {
+                console.log(`[Urban Bowl Debug] Urban Bowl but no dumplingChoice found`);
+                console.log(`[Urban Bowl Debug] item.categoryInfo:`, JSON.stringify(item.categoryInfo));
               }
             }
           }
@@ -16815,6 +16847,12 @@ body {
               items: reactOrder.items.map(item => {
                 let categoryInfo;
                 try {
+                  // Debug log for Urban Bowls
+                  if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl')) {
+                    console.log(`[Overlay] Categorizing Urban Bowl: ${item.name}`);
+                    console.log(`[Overlay] Item modifiers:`, JSON.stringify(item.modifiers));
+                  }
+                  
                   // Pass the complete item object to categoryManager
                   categoryInfo = categoryManager.categorizeItem(item.name, item.size || 'no-size', {
                     proteinType: item.proteinType,
