@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.8.0
+// @version      4.8.2
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -12030,7 +12030,7 @@ body {
                     <li class="${itemClass}"${customerNames}>
                       ${colorDotsHtml}
                       <span class="wave-item-quantity">${window.escapeHtml(item.batchQuantity || item.totalQuantity || 0)}x</span>
-                      <span class="wave-item-name">${window.escapeHtml(item.baseName || item.name)}</span>
+                      <span class="wave-item-name">${this.formatItemNameWithSauce(window.escapeHtml(item.baseName || item.name))}</span>
                       ${item.size && item.size !== 'no-size' ? (() => {
                         // Extract the actual size from compound values like "small - Garlic Butter Fried Rice Substitute"
                         const fullSizeText = item.size;
@@ -12364,6 +12364,97 @@ body {
         return html;
       }
       
+      // Helper function to underline sauce names in item names
+      formatItemNameWithSauce(itemName) {
+        // Known sauce keywords and patterns
+        const saucePatterns = [
+          // Specific multi-word sauces
+          'Garlic Sesame Fusion',
+          'Sweet Shoyu',
+          'Soy Ginger',
+          'Sweet & Sour',
+          'Honey Mustard',
+          'Spicy Yuzu',
+          
+          // Compound sauces (word + Aioli/Sauce/etc)
+          '\\w+\\s+Aioli',           // Matches: Garlic Aioli, Chipotle Aioli, Sesame Aioli, etc.
+          '\\w+\\s+Sauce',           // Matches: Orange Sauce, Buffalo Sauce, etc.
+          '\\w+\\s+Glaze',           // Matches: Teriyaki Glaze, etc.
+          '\\w+\\s+Dressing',        // Matches: Ranch Dressing, etc.
+          
+          // Single word sauces
+          'Orange',
+          'Bulgogi',
+          'Sesame',
+          'Teriyaki',
+          'Buffalo',
+          'BBQ',
+          'Ranch',
+          'Ponzu',
+          'Yuzu',
+          'Miso',
+          'Gochujang',
+          'Sriracha',
+          'Wasabi',
+          'Chimichurri',
+          'Pesto',
+          'Alfredo',
+          'Marinara'
+        ];
+        
+        let formattedName = itemName;
+        
+        // First, check for known multi-word and compound patterns
+        saucePatterns.forEach(pattern => {
+          const regex = new RegExp(`(${pattern})`, 'gi');
+          const matches = formattedName.match(regex);
+          if (matches) {
+            matches.forEach(match => {
+              // Only replace if not already underlined
+              if (!formattedName.includes(`<u>${match}</u>`)) {
+                formattedName = formattedName.replace(new RegExp(match, 'gi'), `<u>$&</u>`);
+              }
+            });
+          }
+        });
+        
+        // Additional smart detection for patterns like "X-Style" or "X-Flavored"
+        const stylePatterns = [
+          '(\\w+)[-\\s]Style',       // Korean-Style, Thai Style
+          '(\\w+)[-\\s]Flavored',    // Lemon-Flavored
+          '(\\w+)[-\\s]Infused',     // Herb-Infused
+          '(\\w+)[-\\s]Seasoned'     // Cajun-Seasoned
+        ];
+        
+        stylePatterns.forEach(pattern => {
+          const regex = new RegExp(pattern, 'gi');
+          formattedName = formattedName.replace(regex, '<u>$&</u>');
+        });
+        
+        // Detect sauce indicators in context (e.g., "with X Sauce" or "in X")
+        const contextPatterns = [
+          'with\\s+(\\w+(?:\\s+\\w+)?)',     // "with Teriyaki"
+          'in\\s+(\\w+(?:\\s+\\w+)?\\s+Sauce)', // "in Orange Sauce"
+          '\\((\\w+(?:\\s+\\w+)?(?:\\s+Sauce)?)\\)' // "(Spicy Mayo)"
+        ];
+        
+        contextPatterns.forEach(pattern => {
+          const regex = new RegExp(pattern, 'gi');
+          const matches = formattedName.match(regex);
+          if (matches) {
+            matches.forEach(match => {
+              // Extract just the sauce name part
+              const sauceMatch = match.replace(/^(with|in)\s+/i, '').replace(/[()]/g, '');
+              if (!formattedName.includes(`<u>${sauceMatch}</u>`)) {
+                formattedName = formattedName.replace(sauceMatch, `<u>${sauceMatch}</u>`);
+              }
+            });
+          }
+        });
+        
+        return formattedName;
+      }
+      
       renderItemsList(items) {
         let html = '';
         
@@ -12509,7 +12600,7 @@ body {
             <div class="batch-item ${hasNewOrders ? 'new-item' : ''}">
               <div class="item-info">
                 ${hasNewOrders ? '<span class="new-badge">NEW</span>' : ''}
-                <span class="item-name">${item.name}</span>
+                <span class="item-name">${this.formatItemNameWithSauce(item.name)}</span>
                 ${proteinBadge ? `<span class="protein-badge">${proteinBadge}</span>` : ''}
                 ${riceType ? `<span class="rice-type-badge ${riceTypeClass}">${riceType}</span>` : ''}
                 ${dumplingProtein ? `<span class="dumpling-protein-badge">${dumplingProtein}</span>` : ''}
@@ -12572,7 +12663,7 @@ body {
             items.forEach(item => {
               html += `
                 <div class="wave-item">
-                  <span class="wave-item-name">${item.name}</span>
+                  <span class="wave-item-name">${this.formatItemNameWithSauce(item.name)}</span>
                   <span class="wave-item-qty">×${item.waveQuantity}</span>
                   <button class="remove-from-wave" data-item-key="${item.key}">−</button>
                 </div>
