@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.0.6
+// @version      5.0.5
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -5435,12 +5435,6 @@ body {
         // Store rice substitution info for Urban Bowls (but don't change subcategory)
         if (topCategoryKey === 'urban-bowls' && modifierDetails.riceSubstitution) {
           modifiers.riceSubstitution = modifierDetails.riceSubstitution;
-        }
-        
-        // IMPORTANT: Store dumpling choice for Urban Bowls
-        if (topCategoryKey === 'urban-bowls' && modifierDetails.dumplingChoice) {
-          modifiers.dumplingChoice = modifierDetails.dumplingChoice;
-          console.log(`[CategoryManager] Transferring dumplingChoice to modifiers: ${modifierDetails.dumplingChoice}`);
         }
         
         if (subCategoryName && subCategoryName !== 'General') {
