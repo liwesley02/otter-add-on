@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.9.4
+// @version      4.9.5
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -12163,7 +12163,7 @@ body {
                       ${colorDotsHtml}
                       <span class="wave-item-quantity">${window.escapeHtml(item.batchQuantity || item.totalQuantity || 0)}x</span>
                       <span class="wave-item-name">${this.formatItemNameWithSauce(item.baseName || item.name)}</span>
-                      ${item.size && item.size !== 'no-size' ? (() => {
+                      ${item.size && item.size !== 'no-size' && item.size !== 'urban' ? (() => {
                         // Extract the actual size from compound values like "small - Garlic Butter Fried Rice Substitute"
                         const fullSizeText = item.size;
                         let sizeClass = fullSizeText.toLowerCase();
@@ -12672,10 +12672,14 @@ body {
               // Check modifiers for rice substitutions
               if (item.modifiers && item.modifiers.length > 0) {
                 item.modifiers.forEach(mod => {
-                  const modName = mod.name.toLowerCase();
-                  if (modName.includes('garlic butter') && modName.includes('fried rice')) {
-                    riceType = 'Fried Rice';
+                  const modName = (mod.name || mod).toLowerCase();
+                  console.log(`[Urban Bowl Debug] Checking rice modifier: ${modName}`);
+                  
+                  // Look for rice substitutions - specifically "garlic butter fried rice for rice substitute"
+                  if (modName.includes('garlic butter') && (modName.includes('fried rice') || modName.includes('rice substitute'))) {
+                    riceType = 'Garlic Butter Fried Rice';
                     riceTypeClass = 'garlic-butter';
+                    console.log(`[Urban Bowl Debug] Found garlic butter fried rice substitution`);
                   } else if (modName.includes('fried rice')) {
                     riceType = 'Fried Rice';
                     riceTypeClass = 'fried-rice';
@@ -12743,19 +12747,27 @@ body {
             
             // For Urban Bowls, check if they have dumplings as part of the meal
             if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl')))) {
+              // Debug logging
+              console.log(`[Urban Bowl Debug] Processing Urban Bowl: ${item.name}`);
+              console.log(`[Urban Bowl Debug] Modifiers:`, item.modifiers);
+              
               // Check in modifiers array
               if (item.modifiers && Array.isArray(item.modifiers)) {
                 item.modifiers.forEach(mod => {
-                  const modName = mod.name.toLowerCase();
-                  if (modName.includes('dumpling')) {
+                  console.log(`[Urban Bowl Debug] Checking modifier:`, mod);
+                  const modName = (mod.name || mod).toLowerCase();
+                  
+                  // Check for dumplings - looking for "Choice of 3 piece Dumplings" or just dumpling types
+                  if (modName.includes('dumpling') || modName.includes('choice of 3')) {
+                    console.log(`[Urban Bowl Debug] Found dumpling modifier: ${modName}`);
                     if (modName.includes('pork')) {
-                      dumplingProtein = 'Pork';
+                      dumplingProtein = 'Pork Dumplings';
                       dumplingClass = 'pork';
                     } else if (modName.includes('chicken')) {
-                      dumplingProtein = 'Chicken';
+                      dumplingProtein = 'Chicken Dumplings';
                       dumplingClass = 'chicken';
                     } else if (modName.includes('vegetable') || modName.includes('veggie')) {
-                      dumplingProtein = 'Vegetable';
+                      dumplingProtein = 'Vegetable Dumplings';
                       dumplingClass = 'vegetable';
                     }
                   }
