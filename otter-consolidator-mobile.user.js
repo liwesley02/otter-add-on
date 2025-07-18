@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.9.9
+// @version      5.0.0
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -4755,6 +4755,17 @@ body {
               totalQuantity: 0
             });
             console.log(`[OrderBatcher] Batch created with categoryInfo:`, JSON.stringify(this.batches.get(key).categoryInfo));
+            
+            // Extra debug for Urban Bowls
+            if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl')) {
+              const batch = this.batches.get(key);
+              console.log(`[OrderBatcher] Urban Bowl batch details:`, {
+                name: batch.name,
+                categoryInfo: batch.categoryInfo,
+                hasDumplingChoice: !!(batch.categoryInfo?.modifiers?.dumplingChoice),
+                dumplingChoice: batch.categoryInfo?.modifiers?.dumplingChoice
+              });
+            }
           }
           
           const batch = this.batches.get(key);
@@ -8595,10 +8606,14 @@ body {
                 let size = 'no-size';
                 let sizeModifiers = []; // Collect ALL size-related modifiers
                 const additionalItems = []; // Track items that should be extracted separately
+                const modifierDetails = {}; // Store detailed modifier info like dumplingChoice
+                const modifiersList = []; // Array of modifier objects
                 
                 // Check if Urban Bowl first
                 if (itemName.toLowerCase().includes('urban bowl')) {
                   size = 'urban';
+                  modifierDetails.riceSubstitution = 'White Rice'; // Default
+                  modifierDetails.dumplingChoice = null;
                   console.log(\`Detected Urban Bowl: \${itemName} - set size to 'urban'\`);
                 }
                 
@@ -8622,8 +8637,18 @@ body {
                       
                       console.log(\`  Station modifier section: \${stationMod.sectionName}, item: \${modName}\`);
                       
+                      // Check for Urban Bowl dumplings FIRST
+                      if (itemName.toLowerCase().includes('urban bowl') && 
+                          (sectionName.includes('choice of 3 piece dumplings') || 
+                           sectionName.includes('dumpling') ||
+                           modName.toLowerCase().includes('dumpling'))) {
+                        // This is a dumpling choice for Urban Bowl
+                        modifierDetails.dumplingChoice = modName;
+                        modifiersList.push({ name: modName, integrated: true });
+                        console.log(\`  Urban Bowl dumpling choice detected: "\${modName}"\`);
+                      }
                       // Check if this should be a separate item
-                      if (sectionName.includes('add') || 
+                      else if (sectionName.includes('add') || 
                           sectionName.includes('side') || 
                           sectionName.includes('drink') || 
                           sectionName.includes('dessert') ||
@@ -8637,10 +8662,19 @@ body {
                           console.log(\`  Marked as additional item: "\${modName}"\`);
                         }
                       } else {
-                        // This is a size modifier
+                        // This is a size modifier or other integrated modifier
                         if (modName && !sizeModifiers.includes(modName)) {
-                          sizeModifiers.push(modName);
-                          console.log(\`  Added as size modifier: "\${modName}"\`);
+                          // Check for rice substitution in Urban Bowl
+                          if (itemName.toLowerCase().includes('urban bowl') && 
+                              (modName.toLowerCase().includes('fried rice') || 
+                               modName.toLowerCase().includes('noodle'))) {
+                            modifierDetails.riceSubstitution = modName;
+                            modifiersList.push({ name: modName, integrated: true });
+                            console.log(\`  Urban Bowl rice substitution: "\${modName}"\`);
+                          } else {
+                            sizeModifiers.push(modName);
+                            console.log(\`  Added as size modifier: "\${modName}"\`);
+                          }
                         }
                       }
                     } else if (modifier && modifier.orderItemDetail) {
@@ -8648,8 +8682,23 @@ body {
                       const modNameLower = modName.toLowerCase();
                       console.log(\`  Modifier name: "\${modName}"\`);
                       
+                      // Check for Urban Bowl dumplings
+                      if (itemName.toLowerCase().includes('urban bowl') && 
+                          modNameLower.includes('dumpling')) {
+                        modifierDetails.dumplingChoice = modName;
+                        modifiersList.push({ name: modName, integrated: true });
+                        console.log(\`  Urban Bowl dumpling choice (no section): "\${modName}"\`);
+                      }
+                      // Check for Urban Bowl rice substitution
+                      else if (itemName.toLowerCase().includes('urban bowl') && 
+                               (modNameLower.includes('fried rice') || 
+                                modNameLower.includes('noodle'))) {
+                        modifierDetails.riceSubstitution = modName;
+                        modifiersList.push({ name: modName, integrated: true });
+                        console.log(\`  Urban Bowl rice substitution (no section): "\${modName}"\`);
+                      }
                       // Only add as size modifier if it's actually about size/rice
-                      if (modNameLower.includes('small') || 
+                      else if (modNameLower.includes('small') || 
                           modNameLower.includes('large') || 
                           modNameLower.includes('rice') || 
                           modNameLower.includes('noodle')) {
@@ -8707,8 +8756,15 @@ body {
                   size: size,
                   note: itemNote,
                   isRiceBowl: itemName.toLowerCase().includes('rice bowl'),
-                  isUrbanBowl: itemName.toLowerCase().includes('urban bowl')
+                  isUrbanBowl: itemName.toLowerCase().includes('urban bowl'),
+                  modifiers: modifiersList,
+                  modifierDetails: modifierDetails
                 });
+                
+                // Debug log for Urban Bowls
+                if (itemName.toLowerCase().includes('urban bowl')) {
+                  console.log(\`[PageContext] Urban Bowl item pushed with modifierDetails:\`, modifierDetails);
+                }
                 
                 console.log(\`Item \${idx + 1}: \${itemName} (\${size}) x\${quantity}\`);
                 
@@ -8742,13 +8798,24 @@ body {
                 size = 'urban';
               }
               
+              const modifierDetails = {};
+              const modifiersList = [];
+              
+              // Initialize Urban Bowl modifierDetails
+              if (itemName.toLowerCase().includes('urban bowl')) {
+                modifierDetails.riceSubstitution = 'White Rice';
+                modifierDetails.dumplingChoice = null;
+              }
+              
               items.push({
                 name: itemName,
                 quantity: quantity,
                 size: size,
                 note: itemNote,
                 isRiceBowl: itemName.toLowerCase().includes('rice bowl'),
-                isUrbanBowl: itemName.toLowerCase().includes('urban bowl')
+                isUrbanBowl: itemName.toLowerCase().includes('urban bowl'),
+                modifiers: modifiersList,
+                modifierDetails: modifierDetails
               });
               
               console.log(\`Item \${idx + 1}: \${itemName} (\${size}) x\${quantity}\`);
@@ -8998,7 +9065,8 @@ body {
               items: order.items.map(item => ({
                 ...item,
                 baseName: item.name,
-                modifiers: item.modifiers || [] // Preserve modifiers from React data
+                modifiers: item.modifiers || [], // Preserve modifiers from React data
+                modifierDetails: item.modifierDetails || {} // Preserve modifierDetails from page context
               }))
             };
           });
@@ -12861,9 +12929,17 @@ body {
             
             // For Urban Bowls, check if they have dumplings as part of the meal
             if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl')))) {
-              // Debug logging
+              // Comprehensive debug logging
               console.log(`[Urban Bowl Debug] Processing Urban Bowl: ${item.name}`);
-              console.log(`[Urban Bowl Debug] Modifiers:`, item.modifiers);
+              console.log(`[Urban Bowl Debug] Item details:`, {
+                name: item.name,
+                isUrbanBowl: item.isUrbanBowl,
+                hasCategoryInfo: !!item.categoryInfo,
+                categoryInfoModifiers: item.categoryInfo?.modifiers,
+                hasDumplingChoice: !!(item.categoryInfo?.modifiers?.dumplingChoice),
+                dumplingChoice: item.categoryInfo?.modifiers?.dumplingChoice,
+                modifiersArray: item.modifiers
+              });
               
               // Check in modifiers array
               if (item.modifiers && Array.isArray(item.modifiers)) {
@@ -16851,17 +16927,21 @@ body {
                   if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl')) {
                     console.log(`[Overlay] Categorizing Urban Bowl: ${item.name}`);
                     console.log(`[Overlay] Item modifiers:`, JSON.stringify(item.modifiers));
+                    console.log(`[Overlay] Item modifierDetails:`, JSON.stringify(item.modifierDetails));
                   }
                   
                   // Pass the complete item object to categoryManager
-                  categoryInfo = categoryManager.categorizeItem(item.name, item.size || 'no-size', {
-                    proteinType: item.proteinType,
+                  // Merge modifierDetails into the modifiers object for backward compatibility
+                  const modifiersData = {
+                    ...(item.modifierDetails || {}), // Spread modifierDetails first (includes dumplingChoice)
+                    proteinType: item.proteinType || item.modifierDetails?.proteinType,
                     sauce: item.sauce || item.modifierDetails?.sauce,
-                    modifiers: item.modifiers,
-                    modifierDetails: item.modifierDetails,
+                    modifiers: item.modifiers, // Keep the array of modifiers
                     isRiceBowl: item.isRiceBowl,
                     isUrbanBowl: item.isUrbanBowl
-                  });
+                  };
+                  
+                  categoryInfo = categoryManager.categorizeItem(item.name, item.size || 'no-size', modifiersData);
                 } catch (error) {
                   console.error(`Error categorizing item ${item.name}:`, error);
                   categoryInfo = {
