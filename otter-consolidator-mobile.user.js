@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.8.3
+// @version      4.8.4
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -11700,11 +11700,6 @@ body {
               <input type="number" id="batch-capacity" class="batch-capacity-input" 
                      value="${this.batchManager.maxBatchCapacity}" min="1" max="20">
             </div>
-            <div class="clear-button-container">
-              <button class="clear-all-btn" id="clear-completed" title="Clear all cached data and orders">
-                🗑️ Clear All Orders
-              </button>
-            </div>
             <div class="debug-toggle" style="margin-left: auto;">
               <label style="display: flex; align-items: center; gap: 3px; font-size: 10px;">
                 <input type="checkbox" id="debug-mode-toggle" ${window.logger && window.logger.debugMode ? 'checked' : ''}>
@@ -11759,13 +11754,6 @@ body {
           });
         }
         
-        // Add clear completed button listener
-        const clearCompletedBtn = footerContainer.querySelector('#clear-completed');
-        if (clearCompletedBtn) {
-          clearCompletedBtn.addEventListener('click', () => {
-            this.clearCompletedOrders();
-          });
-        }
       }
       
       renderBatchView() {
@@ -13000,23 +12988,23 @@ body {
           });
         } else {
           container.innerHTML = `
-            <button class="api-login-btn" style="
+            <button class="clear-all-btn" id="clear-completed" style="
               padding: 4px 12px;
-              background: #007bff;
+              background: #dc3545;
               color: white;
               border: none;
               border-radius: 4px;
               font-size: 12px;
               cursor: pointer;
               font-weight: 500;
-            ">
-              Login to KDS
+            " title="Clear all cached data and orders">
+              🗑️ Clear All
             </button>
           `;
           
-          container.querySelector('.api-login-btn').addEventListener('click', () => {
-            if (window.otterAuthUI) {
-              window.otterAuthUI.showLoginModal();
+          container.querySelector('.clear-all-btn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all orders and cached data?')) {
+              this.clearCompletedOrders();
             }
           });
         }
