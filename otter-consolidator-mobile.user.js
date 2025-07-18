@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.8.2
+// @version      4.8.3
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -204,9 +204,47 @@
             };
             document.body.appendChild(triggerBtn);
             
+            // Add manual trigger button
+            const manualTrigger = document.createElement('button');
+            manualTrigger.innerHTML = '📦 Open Consolidator';
+            manualTrigger.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: #4CAF50;
+                color: white;
+                border: none;
+                padding: 15px 20px;
+                border-radius: 50px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                z-index: 999999;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                transition: all 0.3s ease;
+            `;
+            manualTrigger.onmouseover = () => { manualTrigger.style.transform = 'scale(1.05)'; };
+            manualTrigger.onmouseout = () => { manualTrigger.style.transform = 'scale(1)'; };
+            manualTrigger.onclick = async () => {
+                console.log('[Manual Trigger] Button clicked');
+                if (window.otterOverlayUI && window.otterOverlayUI.toggleVisibility) {
+                    window.otterOverlayUI.toggleVisibility();
+                } else if (window.init) {
+                    try {
+                        await window.init();
+                    } catch (err) {
+                        console.error('[Manual Trigger] Init failed:', err);
+                        alert('Failed to initialize: ' + err.message);
+                    }
+                } else {
+                    alert('Consolidator not ready yet. Please wait a moment and try again.');
+                }
+            };
+            document.body.appendChild(manualTrigger);
+            
             setTimeout(() => {
                 loadingIndicator.style.background = '#4CAF50';
-                loadingIndicator.innerHTML = '✅ Otter Consolidator Ready';
+                loadingIndicator.innerHTML = '✅ Otter Consolidator Ready - Click button or press Ctrl+Shift+O';
                 setTimeout(() => {
                     loadingIndicator.style.opacity = '0.7';
                 }, 2000);
@@ -16352,12 +16390,39 @@ body {
           isInitialized = true;
           console.log('Otter Order Consolidator initialized successfully');
           
+          // Update the main loading indicator
+          const mainLoadingIndicator = document.getElementById('otter-loading-indicator');
+          if (mainLoadingIndicator) {
+            mainLoadingIndicator.innerHTML = '✅ Otter Consolidator Ready';
+            mainLoadingIndicator.style.background = '#4CAF50';
+            setTimeout(() => {
+              mainLoadingIndicator.style.opacity = '0.7';
+            }, 2000);
+          }
+          
+          // Update progress indicator
+          initProgress.textContent = 'Otter Extension: Ready!';
+          initProgress.style.background = '#28a745';
+          
           // Remove progress indicator
           setTimeout(() => initProgress.remove(), 2000);
           
         } catch (error) {
           console.error('Critical error during initialization:', error);
           isInitialized = false;
+          
+          // Update loading indicator to show error
+          const mainLoadingIndicator = document.getElementById('otter-loading-indicator');
+          if (mainLoadingIndicator) {
+            mainLoadingIndicator.innerHTML = '❌ Error: ' + error.message;
+            mainLoadingIndicator.style.background = '#dc3545';
+          }
+          
+          // Update progress indicator
+          if (initProgress) {
+            initProgress.textContent = 'Otter Extension: Error - ' + error.message;
+            initProgress.style.background = '#dc3545';
+          }
           
           // Update or create error notification
           let errorNotif = document.getElementById('otter-init-progress');
