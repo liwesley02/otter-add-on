@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.0.0
+// @version      5.0.1
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -5457,6 +5457,8 @@ body {
         // Debug logging for Urban Bowls
         if (isUrbanBowl) {
           console.log(`[CategoryManager] Urban Bowl categorization result:`, JSON.stringify(result));
+          console.log(`[CategoryManager] Urban Bowl dumplingChoice in input modifiers:`, modifiers.dumplingChoice);
+          console.log(`[CategoryManager] Urban Bowl dumplingChoice in result:`, result.modifiers?.dumplingChoice);
         }
         
         // Debug log for rice bowls showing as "Other"
@@ -12978,9 +12980,41 @@ body {
                   dumplingProtein = 'Vegetable';
                   dumplingClass = 'vegetable';
                 }
+                // Set the dumpling tag text for Urban Bowls
+                if (!dumplingProtein && modName.includes('dumpling')) {
+                  // If we found a dumpling modifier but couldn't determine type, use generic
+                  dumplingProtein = 'Dumplings';
+                  dumplingClass = 'default';
+                }
               } else if (item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) {
                 console.log(`[Urban Bowl Debug] Urban Bowl but no dumplingChoice found`);
                 console.log(`[Urban Bowl Debug] item.categoryInfo:`, JSON.stringify(item.categoryInfo));
+                console.log(`[Urban Bowl Debug] Looking for dumplings in modifiers array...`);
+                
+                // Fallback: Check the modifiers array one more time
+                if (!dumplingProtein && item.modifiers && Array.isArray(item.modifiers)) {
+                  const dumplingMod = item.modifiers.find(mod => {
+                    const modName = (mod.name || mod).toLowerCase();
+                    return modName.includes('dumpling');
+                  });
+                  if (dumplingMod) {
+                    const modName = (dumplingMod.name || dumplingMod).toLowerCase();
+                    if (modName.includes('pork')) {
+                      dumplingProtein = 'Pork';
+                      dumplingClass = 'pork';
+                    } else if (modName.includes('chicken')) {
+                      dumplingProtein = 'Chicken';
+                      dumplingClass = 'chicken';
+                    } else if (modName.includes('vegetable') || modName.includes('veggie')) {
+                      dumplingProtein = 'Vegetable';
+                      dumplingClass = 'vegetable';
+                    } else {
+                      dumplingProtein = 'Dumplings';
+                      dumplingClass = 'default';
+                    }
+                    console.log(`[Urban Bowl Debug] Found dumpling in modifiers array: ${dumplingProtein}`);
+                  }
+                }
               }
             }
           }
@@ -16931,15 +16965,23 @@ body {
                   }
                   
                   // Pass the complete item object to categoryManager
-                  // Merge modifierDetails into the modifiers object for backward compatibility
+                  // Create a modifiers object that includes both array modifiers and modifierDetails
                   const modifiersData = {
-                    ...(item.modifierDetails || {}), // Spread modifierDetails first (includes dumplingChoice)
+                    // Include properties from modifierDetails (like dumplingChoice)
+                    dumplingChoice: item.modifierDetails?.dumplingChoice || null,
+                    riceSubstitution: item.modifierDetails?.riceSubstitution || null,
+                    // Standard properties
                     proteinType: item.proteinType || item.modifierDetails?.proteinType,
                     sauce: item.sauce || item.modifierDetails?.sauce,
                     modifiers: item.modifiers, // Keep the array of modifiers
                     isRiceBowl: item.isRiceBowl,
                     isUrbanBowl: item.isUrbanBowl
                   };
+                  
+                  // Debug logging for Urban Bowls
+                  if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl')) {
+                    console.log(`[Overlay] ModifiersData being passed to categorizeItem:`, modifiersData);
+                  }
                   
                   categoryInfo = categoryManager.categorizeItem(item.name, item.size || 'no-size', modifiersData);
                 } catch (error) {
