@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.9.5
+// @version      4.9.6
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -5392,6 +5392,7 @@ body {
           fullSize: itemSize, // Store the full size info for rice type display
           proteinType: modifiers.proteinType || '', // For rice bowls
           sauceType: modifiers.sauceType || '', // For rice bowls
+          modifiers: modifiers, // Include all modifiers (including dumplingChoice for urban bowls)
           // Legacy properties for compatibility
           sizeCategory: topCategoryKey,
           proteinCategory: subCategoryKey,
@@ -9162,7 +9163,7 @@ body {
                     if (stationMods && stationMods[modId]) {
                       const sectionName = stationMods[modId].sectionName || '';
                       const upsellSections = ['Add a Dessert', 'Add a Drink', 'Side Addition'];
-                      const separateItemSections = ['Choice of 3 piece Dumplings']; // Dumplings should be separate
+                      const separateItemSections = []; // Removed dumplings - they should be integrated for Urban Bowls
                       isUpsellItem = upsellSections.includes(sectionName) || separateItemSections.includes(sectionName);
                       
                       if (isUpsellItem) {
@@ -9434,10 +9435,11 @@ body {
           }
         }
         
-        // Special case: Dumplings in Urban Bowls should be separate items
+        // Special case: Dumplings in Urban Bowls should be integrated (not separate)
+        // Keep them as part of the Urban Bowl with tags
         if (sectionName === 'Choice of 3 piece Dumplings' && itemName.toLowerCase().includes('urban bowl')) {
-          console.log(`[ReactDataExtractor] Dumplings in Urban Bowl will be separate items: ${modifierName}`);
-          return false;
+          console.log(`[ReactDataExtractor] Dumplings in Urban Bowl will be integrated as tags: ${modifierName}`);
+          return true; // Changed from false to true - integrate as modifiers
         }
         
         return this.isIntegratedModifier(itemName, modifierName, sectionName);
@@ -12162,7 +12164,7 @@ body {
                     <li class="${itemClass}"${customerNames}>
                       ${colorDotsHtml}
                       <span class="wave-item-quantity">${window.escapeHtml(item.batchQuantity || item.totalQuantity || 0)}x</span>
-                      <span class="wave-item-name">${this.formatItemNameWithSauce(item.baseName || item.name)}</span>
+                      <span class="wave-item-name">${this.formatItemNameWithSauce(item.baseName || item.name, item)}</span>
                       ${item.size && item.size !== 'no-size' && item.size !== 'urban' ? (() => {
                         // Extract the actual size from compound values like "small - Garlic Butter Fried Rice Substitute"
                         const fullSizeText = item.size;
@@ -12497,7 +12499,7 @@ body {
       }
       
       // Helper function to underline and highlight sauce names in item names
-      formatItemNameWithSauce(itemName) {
+      formatItemNameWithSauce(itemName, item = null) {
         // Known sauce keywords and patterns
         const saucePatterns = [
           // Specific multi-word sauces
@@ -12535,6 +12537,40 @@ body {
         ];
         
         let formattedName = itemName;
+        
+        // For Urban Bowls, add rice type to the name if it's not white rice
+        if (item && (item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl')))) {
+          let riceType = 'White Rice'; // Default
+          
+          // Check for rice substitution in various places
+          if (item.categoryInfo && item.categoryInfo.modifiers && item.categoryInfo.modifiers.riceSubstitution) {
+            riceType = item.categoryInfo.modifiers.riceSubstitution;
+          } else if (item.modifiers) {
+            // Check in modifiers array
+            if (Array.isArray(item.modifiers)) {
+              item.modifiers.forEach(mod => {
+                const modName = (mod.name || mod).toLowerCase();
+                if (modName.includes('garlic butter') && modName.includes('rice')) {
+                  riceType = 'Garlic Butter Fried Rice';
+                } else if (modName.includes('fried rice') && !modName.includes('garlic')) {
+                  riceType = 'Fried Rice';
+                } else if (modName.includes('noodle')) {
+                  riceType = 'Noodles';
+                }
+              });
+            }
+            // Check in modifiers object
+            else if (item.modifiers.riceSubstitution) {
+              riceType = item.modifiers.riceSubstitution;
+            }
+          }
+          
+          // Modify the display name based on rice type
+          if (riceType !== 'White Rice') {
+            // Replace "Urban Bowl" with "Urban Bowl - [Rice Type]"
+            formattedName = formattedName.replace(/Urban Bowl/i, `Urban Bowl - ${riceType.replace(' Substitute', '').replace(' for Rice', '')}`);
+          }
+        }
         
         // First, check for known multi-word and compound patterns
         saucePatterns.forEach(pattern => {
@@ -12795,7 +12831,7 @@ body {
             <div class="batch-item ${hasNewOrders ? 'new-item' : ''}">
               <div class="item-info">
                 ${hasNewOrders ? '<span class="new-badge">NEW</span>' : ''}
-                <span class="item-name">${this.formatItemNameWithSauce(item.name)}</span>
+                <span class="item-name">${this.formatItemNameWithSauce(item.name, item)}</span>
                 ${proteinBadge ? `<span class="protein-badge ${proteinClass}">${proteinBadge}</span>` : ''}
                 ${riceType ? `<span class="rice-type-badge ${riceTypeClass}">${riceType}</span>` : ''}
                 ${dumplingProtein ? `<span class="dumpling-protein-badge ${dumplingClass}">${dumplingProtein}</span>` : ''}
