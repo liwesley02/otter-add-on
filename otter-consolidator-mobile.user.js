@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.9.2
+// @version      4.9.4
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -3157,12 +3157,29 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 .dumpling-protein-badge {
   display: inline-block;
   padding: 3px 10px;
-  background: #8e24aa;
   color: white;
   border-radius: 12px;
   font-size: 13px;
   font-weight: 600;
   margin-left: 8px;
+}
+
+/* Specific dumpling colors */
+.dumpling-protein-badge.pork {
+  background: #ffc107; /* Yellow for pork */
+}
+
+.dumpling-protein-badge.chicken {
+  background: #2196f3; /* Blue for chicken */
+}
+
+.dumpling-protein-badge.vegetable {
+  background: #388e3c; /* Green for vegetable */
+}
+
+/* Default dumpling color */
+.dumpling-protein-badge.default {
+  background: #8e24aa; /* Purple for unknown */
 }
 
 .dumpling-sauce-badge {
@@ -12595,6 +12612,7 @@ body {
           let riceType = '';
           let riceTypeClass = '';
           let dumplingProtein = '';
+          let dumplingClass = 'default';
           let dumplingSauce = '';
           
           // Use categoryInfo if available - it's the source of truth
@@ -12675,10 +12693,13 @@ body {
               const itemNameLower = item.name.toLowerCase();
               if (itemNameLower.includes('pork')) {
                 dumplingProtein = 'Pork';
+                dumplingClass = 'pork';
               } else if (itemNameLower.includes('chicken')) {
                 dumplingProtein = 'Chicken';
+                dumplingClass = 'chicken';
               } else if (itemNameLower.includes('vegetable') || itemNameLower.includes('veggie')) {
                 dumplingProtein = 'Vegetable';
+                dumplingClass = 'vegetable';
               }
               
               // Check modifiers for dumpling type if not found in name
@@ -12687,10 +12708,13 @@ body {
                   const modName = mod.name.toLowerCase();
                   if (modName.includes('pork dumpling')) {
                     dumplingProtein = 'Pork';
+                    dumplingClass = 'pork';
                   } else if (modName.includes('chicken dumpling')) {
                     dumplingProtein = 'Chicken';
+                    dumplingClass = 'chicken';
                   } else if (modName.includes('vegetable dumpling') || modName.includes('veggie dumpling')) {
                     dumplingProtein = 'Vegetable';
+                    dumplingClass = 'vegetable';
                   }
                 });
               }
@@ -12718,19 +12742,40 @@ body {
             }
             
             // For Urban Bowls, check if they have dumplings as part of the meal
-            if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && item.modifiers) {
-              item.modifiers.forEach(mod => {
-                const modName = mod.name.toLowerCase();
-                if (modName.includes('dumpling')) {
-                  if (modName.includes('pork')) {
-                    dumplingProtein = 'Pork';
-                  } else if (modName.includes('chicken')) {
-                    dumplingProtein = 'Chicken';
-                  } else if (modName.includes('vegetable') || modName.includes('veggie')) {
-                    dumplingProtein = 'Vegetable';
+            if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl')))) {
+              // Check in modifiers array
+              if (item.modifiers && Array.isArray(item.modifiers)) {
+                item.modifiers.forEach(mod => {
+                  const modName = mod.name.toLowerCase();
+                  if (modName.includes('dumpling')) {
+                    if (modName.includes('pork')) {
+                      dumplingProtein = 'Pork';
+                      dumplingClass = 'pork';
+                    } else if (modName.includes('chicken')) {
+                      dumplingProtein = 'Chicken';
+                      dumplingClass = 'chicken';
+                    } else if (modName.includes('vegetable') || modName.includes('veggie')) {
+                      dumplingProtein = 'Vegetable';
+                      dumplingClass = 'vegetable';
+                    }
                   }
+                });
+              }
+              
+              // Also check in categoryInfo modifiers for dumplingChoice
+              if (item.categoryInfo && item.categoryInfo.modifiers && item.categoryInfo.modifiers.dumplingChoice) {
+                const dumplingChoice = item.categoryInfo.modifiers.dumplingChoice.toLowerCase();
+                if (dumplingChoice.includes('pork')) {
+                  dumplingProtein = 'Pork';
+                  dumplingClass = 'pork';
+                } else if (dumplingChoice.includes('chicken')) {
+                  dumplingProtein = 'Chicken';
+                  dumplingClass = 'chicken';
+                } else if (dumplingChoice.includes('vegetable') || dumplingChoice.includes('veggie')) {
+                  dumplingProtein = 'Vegetable';
+                  dumplingClass = 'vegetable';
                 }
-              });
+              }
             }
           }
           
@@ -12741,7 +12786,7 @@ body {
                 <span class="item-name">${this.formatItemNameWithSauce(item.name)}</span>
                 ${proteinBadge ? `<span class="protein-badge ${proteinClass}">${proteinBadge}</span>` : ''}
                 ${riceType ? `<span class="rice-type-badge ${riceTypeClass}">${riceType}</span>` : ''}
-                ${dumplingProtein ? `<span class="dumpling-protein-badge">${dumplingProtein}</span>` : ''}
+                ${dumplingProtein ? `<span class="dumpling-protein-badge ${dumplingClass}">${dumplingProtein}</span>` : ''}
                 ${dumplingSauce ? `<span class="dumpling-sauce-badge">${dumplingSauce}</span>` : ''}
                 <span class="item-quantity">×${item.totalQuantity}</span>
               </div>
