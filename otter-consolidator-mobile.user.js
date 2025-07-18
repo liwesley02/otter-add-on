@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.8.8
+// @version      4.9.0
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -3066,6 +3066,15 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 /* Default protein badge color */
 .protein-badge.default {
   background: #9c27b0; /* Purple */
+}
+
+/* Sauce highlighting */
+.sauce-highlight {
+  background-color: #ffeb3b !important;
+  text-decoration: underline !important;
+  font-weight: bold !important;
+  padding: 0 2px;
+  border-radius: 2px;
 }
 
 .rice-type-badge {
@@ -12468,8 +12477,8 @@ body {
           if (matches) {
             matches.forEach(match => {
               // Only replace if not already formatted
-              if (!formattedName.includes(`<mark style="background-color: #ffeb3b; text-decoration: underline; font-weight: bold;">${match}</mark>`)) {
-                formattedName = formattedName.replace(new RegExp(match, 'gi'), `<mark style="background-color: #ffeb3b; text-decoration: underline; font-weight: bold;">$&</mark>`);
+              if (!formattedName.includes(`<span class="sauce-highlight">${match}</span>`)) {
+                formattedName = formattedName.replace(new RegExp(match, 'gi'), `<span class="sauce-highlight">$&</span>`);
               }
             });
           }
@@ -12485,7 +12494,7 @@ body {
         
         stylePatterns.forEach(pattern => {
           const regex = new RegExp(pattern, 'gi');
-          formattedName = formattedName.replace(regex, '<mark style="background-color: #ffeb3b; text-decoration: underline; font-weight: bold;">$&</mark>');
+          formattedName = formattedName.replace(regex, '<span class="sauce-highlight">$&</span>');
         });
         
         // Detect sauce indicators in context (e.g., "with X Sauce" or "in X")
@@ -12502,8 +12511,8 @@ body {
             matches.forEach(match => {
               // Extract just the sauce name part
               const sauceMatch = match.replace(/^(with|in)\s+/i, '').replace(/[()]/g, '');
-              if (!formattedName.includes(`<mark style="background-color: #ffeb3b; text-decoration: underline; font-weight: bold;">${sauceMatch}</mark>`)) {
-                formattedName = formattedName.replace(sauceMatch, `<mark style="background-color: #ffeb3b; text-decoration: underline; font-weight: bold;">${sauceMatch}</mark>`);
+              if (!formattedName.includes(`<span class="sauce-highlight">${sauceMatch}</span>`)) {
+                formattedName = formattedName.replace(sauceMatch, `<span class="sauce-highlight">${sauceMatch}</span>`);
               }
             });
           }
