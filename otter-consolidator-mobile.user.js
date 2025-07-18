@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.8.4
+// @version      4.8.7
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -1705,16 +1705,6 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   letter-spacing: 0.5px;
 }
 
-.protein-badge {
-  background: #17a2b8;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  margin-left: 5px;
-  white-space: nowrap;
-}
 
 /* White rice - default */
 .rice-type-badge.white-rice {
@@ -3029,12 +3019,53 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 .protein-badge {
   display: inline-block;
   padding: 3px 10px;
-  background: #ff6b6b;
   color: white;
   border-radius: 12px;
   font-size: 13px;
   font-weight: 600;
   margin-left: 8px;
+}
+
+/* Protein-specific colors */
+.protein-badge.grilled-chicken {
+  background: #ff9800; /* Orange */
+}
+
+.protein-badge.crispy-chicken {
+  background: #ff5722; /* Deep Orange */
+}
+
+.protein-badge.steak {
+  background: #795548; /* Brown */
+}
+
+.protein-badge.salmon {
+  background: #ff4081; /* Pink */
+}
+
+.protein-badge.shrimp {
+  background: #ff6b9d; /* Light Pink */
+}
+
+.protein-badge.tofu {
+  background: #4caf50; /* Green */
+}
+
+.protein-badge.cauliflower {
+  background: #8bc34a; /* Light Green */
+}
+
+.protein-badge.pork {
+  background: #e91e63; /* Pink-Red */
+}
+
+.protein-badge.fish {
+  background: #03a9f4; /* Light Blue */
+}
+
+/* Default protein badge color */
+.protein-badge.default {
+  background: #9c27b0; /* Purple */
 }
 
 .rice-type-badge {
@@ -12390,7 +12421,7 @@ body {
         return html;
       }
       
-      // Helper function to underline sauce names in item names
+      // Helper function to underline and highlight sauce names in item names
       formatItemNameWithSauce(itemName) {
         // Known sauce keywords and patterns
         const saucePatterns = [
@@ -12436,9 +12467,9 @@ body {
           const matches = formattedName.match(regex);
           if (matches) {
             matches.forEach(match => {
-              // Only replace if not already underlined
-              if (!formattedName.includes(`<u>${match}</u>`)) {
-                formattedName = formattedName.replace(new RegExp(match, 'gi'), `<u>$&</u>`);
+              // Only replace if not already formatted
+              if (!formattedName.includes(`<mark style="background-color: #ffeb3b; text-decoration: underline; font-weight: bold;">${match}</mark>`)) {
+                formattedName = formattedName.replace(new RegExp(match, 'gi'), `<mark style="background-color: #ffeb3b; text-decoration: underline; font-weight: bold;">$&</mark>`);
               }
             });
           }
@@ -12454,7 +12485,7 @@ body {
         
         stylePatterns.forEach(pattern => {
           const regex = new RegExp(pattern, 'gi');
-          formattedName = formattedName.replace(regex, '<u>$&</u>');
+          formattedName = formattedName.replace(regex, '<mark style="background-color: #ffeb3b; text-decoration: underline; font-weight: bold;">$&</mark>');
         });
         
         // Detect sauce indicators in context (e.g., "with X Sauce" or "in X")
@@ -12471,8 +12502,8 @@ body {
             matches.forEach(match => {
               // Extract just the sauce name part
               const sauceMatch = match.replace(/^(with|in)\s+/i, '').replace(/[()]/g, '');
-              if (!formattedName.includes(`<u>${sauceMatch}</u>`)) {
-                formattedName = formattedName.replace(sauceMatch, `<u>${sauceMatch}</u>`);
+              if (!formattedName.includes(`<mark style="background-color: #ffeb3b; text-decoration: underline; font-weight: bold;">${sauceMatch}</mark>`)) {
+                formattedName = formattedName.replace(sauceMatch, `<mark style="background-color: #ffeb3b; text-decoration: underline; font-weight: bold;">${sauceMatch}</mark>`);
               }
             });
           }
@@ -12502,6 +12533,7 @@ body {
           
           // Parse protein type and rice type for badges from categoryInfo
           let proteinBadge = '';
+          let proteinClass = 'default';
           let riceType = '';
           let riceTypeClass = '';
           let dumplingProtein = '';
@@ -12512,6 +12544,28 @@ body {
             // Get protein from categoryInfo
             if (item.categoryInfo.proteinType) {
               proteinBadge = item.categoryInfo.proteinType;
+              
+              // Determine CSS class based on protein type
+              const proteinLower = proteinBadge.toLowerCase();
+              if (proteinLower.includes('grilled chicken')) {
+                proteinClass = 'grilled-chicken';
+              } else if (proteinLower.includes('crispy chicken')) {
+                proteinClass = 'crispy-chicken';
+              } else if (proteinLower.includes('steak')) {
+                proteinClass = 'steak';
+              } else if (proteinLower.includes('salmon')) {
+                proteinClass = 'salmon';
+              } else if (proteinLower.includes('shrimp')) {
+                proteinClass = 'shrimp';
+              } else if (proteinLower.includes('tofu')) {
+                proteinClass = 'tofu';
+              } else if (proteinLower.includes('cauliflower')) {
+                proteinClass = 'cauliflower';
+              } else if (proteinLower.includes('pork')) {
+                proteinClass = 'pork';
+              } else if (proteinLower.includes('fish')) {
+                proteinClass = 'fish';
+              }
             }
             
             // Extract rice type from the full size info
@@ -12627,7 +12681,7 @@ body {
               <div class="item-info">
                 ${hasNewOrders ? '<span class="new-badge">NEW</span>' : ''}
                 <span class="item-name">${this.formatItemNameWithSauce(item.name)}</span>
-                ${proteinBadge ? `<span class="protein-badge">${proteinBadge}</span>` : ''}
+                ${proteinBadge ? `<span class="protein-badge ${proteinClass}">${proteinBadge}</span>` : ''}
                 ${riceType ? `<span class="rice-type-badge ${riceTypeClass}">${riceType}</span>` : ''}
                 ${dumplingProtein ? `<span class="dumpling-protein-badge">${dumplingProtein}</span>` : ''}
                 ${dumplingSauce ? `<span class="dumpling-sauce-badge">${dumplingSauce}</span>` : ''}
@@ -13003,9 +13057,7 @@ body {
           `;
           
           container.querySelector('.clear-all-btn').addEventListener('click', () => {
-            if (confirm('Are you sure you want to clear all orders and cached data?')) {
-              this.clearCompletedOrders();
-            }
+            this.clearCompletedOrders();
           });
         }
       }
