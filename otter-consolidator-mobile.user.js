@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.0.2
+// @version      5.0.3
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -8649,6 +8649,13 @@ body {
                       
                       console.log(\`  Station modifier section: \${stationMod.sectionName}, item: \${modName}\`);
                       
+                      // Debug Urban Bowl modifiers
+                      if (itemName.toLowerCase().includes('urban bowl')) {
+                        console.log(\`  [Urban Bowl Modifier] Section: "\${stationMod.sectionName}" (lowercase: "\${sectionName}")\`);
+                        console.log(\`  [Urban Bowl Modifier] Checking if includes "choice of 3 piece dumplings": \${sectionName.includes('choice of 3 piece dumplings')}\`);
+                        console.log(\`  [Urban Bowl Modifier] Modifier name: "\${modName}"\`);
+                      }
+                      
                       // Check for Urban Bowl dumplings FIRST
                       if (itemName.toLowerCase().includes('urban bowl') && 
                           (sectionName.includes('choice of 3 piece dumplings') || 
@@ -9472,6 +9479,7 @@ body {
                   
                   // Special handling for Urban Bowl modifiers
                   if (isUrbanBowl) {
+                    console.log(`[ReactDataExtractor] Processing Urban Bowl modifier: ${modName} (integrated: ${isIntegrated})`);
                     // Check for rice substitution
                     if (modNameLower.includes('fried rice') || modNameLower.includes('noodle')) {
                       parsedItem.modifiers.riceSubstitution = modName;
@@ -9574,8 +9582,11 @@ body {
         
         // Special case: Dumplings in Urban Bowls should be integrated (not separate)
         // Keep them as part of the Urban Bowl with tags
-        if (sectionName === 'Choice of 3 piece Dumplings' && itemName.toLowerCase().includes('urban bowl')) {
-          console.log(`[ReactDataExtractor] Dumplings in Urban Bowl will be integrated as tags: ${modifierName}`);
+        if (sectionName && sectionName.toLowerCase().includes('choice') && 
+            sectionName.toLowerCase().includes('3 piece') && 
+            sectionName.toLowerCase().includes('dumpling') && 
+            itemName.toLowerCase().includes('urban bowl')) {
+          console.log(`[ReactDataExtractor] Dumplings in Urban Bowl will be integrated as tags: ${modifierName} (section: ${sectionName})`);
           return true; // Changed from false to true - integrate as modifiers
         }
         
