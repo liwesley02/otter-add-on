@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.9.6
+// @version      4.9.8
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -41,7 +41,7 @@
         border-radius: 5px;
         font-family: Arial, sans-serif;
         font-size: 14px;
-        z-index: 999999;
+        z-index: 2147483647; /* Maximum z-index value */
         box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     `;
     
@@ -65,7 +65,7 @@
                 font-size: 16px;
                 font-weight: bold;
                 cursor: pointer;
-                z-index: 999999;
+                z-index: 2147483647; /* Maximum z-index value */
                 box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             `;
             triggerBtn.onclick = async () => {
@@ -110,7 +110,7 @@
                                 height: 100vh;
                                 background: white;
                                 box-shadow: -2px 0 10px rgba(0,0,0,0.2);
-                                z-index: 999998;
+                                z-index: 2147483646; /* Just below maximum */
                                 overflow-y: auto;
                                 padding: 20px;
                             `;
@@ -219,7 +219,7 @@
                 font-size: 16px;
                 font-weight: bold;
                 cursor: pointer;
-                z-index: 999999;
+                z-index: 2147483647; /* Maximum z-index value */
                 box-shadow: 0 4px 12px rgba(0,0,0,0.3);
                 transition: all 0.3s ease;
             `;
@@ -448,7 +448,7 @@
   height: 100vh;
   background: #1a1a1a;
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
-  z-index: 999999;
+  z-index: 2147483647; /* Maximum z-index value */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
   transition: transform 0.3s ease;
@@ -466,7 +466,7 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 /* Force proper stacking context */
 #otter-consolidator-overlay * {
   position: relative;
-  z-index: 999999;
+  z-index: 2147483647; /* Maximum z-index value */
 }
 
 /* Floating Toggle Button */
@@ -2468,7 +2468,7 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   font-size: 24px;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 999998;
+  z-index: 2147483646; /* Just below maximum */
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
@@ -2499,7 +2499,7 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   font-size: 20px;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 999998;
+  z-index: 2147483646; /* Just below maximum */
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
@@ -3797,6 +3797,27 @@ body {
     // Add styles to page
     GM_addStyle(overlayStyles);
     GM_addStyle(labelStyles);
+    
+    // Ensure consolidator stays above plasmo-csui overlay
+    GM_addStyle(`
+      /* Force consolidator above plasmo-csui elements */
+      plasmo-csui#ff-overlay-container {
+        z-index: 999999 !important; /* Lower than our consolidator */
+      }
+      
+      #otter-consolidator-overlay,
+      #otter-overlay,
+      .otter-floating-toggle,
+      .otter-toggle-button {
+        z-index: 2147483647 !important; /* Maximum z-index */
+      }
+      
+      /* Ensure all child elements also have high z-index */
+      #otter-consolidator-overlay * {
+        position: relative;
+        z-index: inherit !important;
+      }
+    `);
 
     // ===== Main Application Code =====
     // Content scripts will be concatenated here
@@ -9294,8 +9315,30 @@ body {
               const modNameLower = modName.toLowerCase();
               console.log(`[ReactDataExtractor] Processing modifier: ${modName} for item ${parsedItem.name}`);
               
+              // Check if this is a size modifier
+              let isSize = false;
+              let sectionName = '';
+              
+              // Check station orders for section name
+              if (stationOrders && stationOrders[0]) {
+                const stationMods = stationOrders[0].menuReconciledItemsContainer?.modifiers;
+                if (stationMods && stationMods[modId]) {
+                  sectionName = stationMods[modId].sectionName || '';
+                  // Check if it's from a size choice section
+                  if (sectionName.toLowerCase().includes('size choice')) {
+                    isSize = true;
+                    console.log(`[ReactDataExtractor] Found size from section "${sectionName}": ${modName}`);
+                  }
+                }
+              }
+              
+              // Also check if the modifier name itself is a size
+              if (!isSize && this.isSizeName(modName)) {
+                isSize = true;
+              }
+              
               // Only check for size modifiers if this is NOT an Urban Bowl
-              if (!isUrbanBowl && this.isSizeName(modName)) {
+              if (!isUrbanBowl && isSize) {
                 // This is a size modifier - apply it to the main item
                 parsedItem.size = modNameLower.trim();
                 console.log(`[ReactDataExtractor] Applied size modifier: ${modName} to item ${parsedItem.name}`);
@@ -9312,7 +9355,8 @@ body {
               // Check if this modifier is integrated into the main item
               else {
                 // For meal items, NO modifiers are integrated - all are separate
-                const isIntegrated = isMealItem ? false : this.shouldIntegrateModifier(parsedItem.name, modName, modifier, stationOrders);
+                // Pass the section name we already retrieved to avoid duplicate lookups
+                const isIntegrated = isMealItem ? false : this.shouldIntegrateModifierWithSection(parsedItem.name, modName, sectionName, modifier, stationOrders);
                 
                 if (isIntegrated) {
                   // This modifier is part of the main item, not separate
@@ -9417,6 +9461,19 @@ body {
         return parsedItem;
       }
       
+      shouldIntegrateModifierWithSection(itemName, modifierName, sectionName, modifier, stationOrders) {
+        // Version that accepts pre-fetched section name
+        
+        // Special case: Dumplings in Urban Bowls should be integrated (not separate)
+        // Keep them as part of the Urban Bowl with tags
+        if (sectionName === 'Choice of 3 piece Dumplings' && itemName.toLowerCase().includes('urban bowl')) {
+          console.log(`[ReactDataExtractor] Dumplings in Urban Bowl will be integrated as tags: ${modifierName}`);
+          return true; // Changed from false to true - integrate as modifiers
+        }
+        
+        return this.isIntegratedModifier(itemName, modifierName, sectionName);
+      }
+      
       shouldIntegrateModifier(itemName, modifierName, modifier, stationOrders) {
         // Determine if a modifier should be integrated into the main item
         // or treated as a separate item
@@ -9435,14 +9492,7 @@ body {
           }
         }
         
-        // Special case: Dumplings in Urban Bowls should be integrated (not separate)
-        // Keep them as part of the Urban Bowl with tags
-        if (sectionName === 'Choice of 3 piece Dumplings' && itemName.toLowerCase().includes('urban bowl')) {
-          console.log(`[ReactDataExtractor] Dumplings in Urban Bowl will be integrated as tags: ${modifierName}`);
-          return true; // Changed from false to true - integrate as modifiers
-        }
-        
-        return this.isIntegratedModifier(itemName, modifierName, sectionName);
+        return this.shouldIntegrateModifierWithSection(itemName, modifierName, sectionName, modifier, stationOrders);
       }
       
       isUrbanBowlComponent(modifierName, modifier, stationOrders) {
@@ -14792,7 +14842,7 @@ body {
               left: 0;
               width: 100%;
               height: 100%;
-              z-index: 999999;
+              z-index: 2147483647; /* Maximum z-index value */
             }
             
             .otter-label-modal .modal-backdrop {
@@ -15845,7 +15895,7 @@ body {
               color: white;
               padding: 15px 20px;
               border-radius: 5px;
-              z-index: 9999999;
+              z-index: 2147483647; /* Maximum z-index value */
               font-size: 14px;
               box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             `;
@@ -15879,7 +15929,7 @@ body {
               color: white;
               padding: 15px 20px;
               border-radius: 5px;
-              z-index: 9999999;
+              z-index: 2147483647; /* Maximum z-index value */
               font-size: 14px;
               box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             `;
@@ -15905,7 +15955,7 @@ body {
               color: white;
               padding: 15px 20px;
               border-radius: 5px;
-              z-index: 9999999;
+              z-index: 2147483647; /* Maximum z-index value */
               font-size: 14px;
               box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             `;
@@ -15932,7 +15982,7 @@ body {
               color: white;
               padding: 15px 20px;
               border-radius: 5px;
-              z-index: 9999999;
+              z-index: 2147483647; /* Maximum z-index value */
               font-size: 14px;
               box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             `;
@@ -15976,7 +16026,7 @@ body {
             color: white;
             padding: 10px 20px;
             border-radius: 5px;
-            z-index: 9999999;
+            z-index: 2147483647; /* Maximum z-index value */
             font-size: 14px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
           `;
@@ -16016,7 +16066,7 @@ body {
             color: white;
             padding: 15px 20px;
             border-radius: 5px;
-            z-index: 9999999;
+            z-index: 2147483647; /* Maximum z-index value */
             font-size: 14px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
           `;
@@ -16050,7 +16100,7 @@ body {
             color: white;
             padding: 15px 20px;
             border-radius: 5px;
-            z-index: 9999999;
+            z-index: 2147483647; /* Maximum z-index value */
             font-size: 14px;
             font-weight: bold;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
@@ -16427,7 +16477,7 @@ body {
             color: white;
             padding: 15px 25px;
             border-radius: 5px;
-            z-index: 9999999;
+            z-index: 2147483647; /* Maximum z-index value */
             font-size: 14px;
             font-weight: bold;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
@@ -16631,7 +16681,7 @@ body {
             color: white;
             padding: 20px;
             border-radius: 8px;
-            z-index: 9999999;
+            z-index: 2147483647; /* Maximum z-index value */
             font-size: 14px;
             max-width: 400px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
