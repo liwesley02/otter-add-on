@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.9.1
+// @version      4.9.2
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -1541,42 +1541,91 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   font-style: italic;
 }
 
-/* Protein-specific subcategory colors */
+/* Protein-specific subcategory colors with outlines */
+.subcategory-header {
+  border: 2px solid transparent;
+  padding: 10px 15px !important;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+/* Grilled Chicken - Orange */
+.subcategory-section.grilled-chicken .subcategory-header,
+.subcategory-section.grilledChickenRiceBowls .subcategory-header,
+.subcategory-section.chickenUrbanBowls .subcategory-header {
+  color: #ff9800;
+  border-color: #ff9800;
+  background: rgba(255, 152, 0, 0.1);
+}
+
+/* Crispy Chicken - Deep Orange */
+.subcategory-section.crispy-chicken .subcategory-header,
 .subcategory-section.crispyChickenRiceBowls .subcategory-header,
 .subcategory-section.chickenNoodles .subcategory-header,
 .subcategory-section.chickenFriedRice .subcategory-header {
-  color: #FF8C00;
-  border-color: #FF8C00;
+  color: #ff5722;
+  border-color: #ff5722;
+  background: rgba(255, 87, 34, 0.1);
 }
 
-.subcategory-section.grilledChickenRiceBowls .subcategory-header,
-.subcategory-section.chickenUrbanBowls .subcategory-header {
-  color: #FFA500;
-  border-color: #FFA500;
-}
-
+/* Steak - Brown */
+.subcategory-section.steak .subcategory-header,
 .subcategory-section.steakRiceBowls .subcategory-header,
 .subcategory-section.beefNoodles .subcategory-header {
-  color: #8B4513;
-  border-color: #8B4513;
+  color: #795548;
+  border-color: #795548;
+  background: rgba(121, 85, 72, 0.1);
 }
 
+/* Salmon - Pink */
+.subcategory-section.salmon .subcategory-header,
 .subcategory-section.salmonRiceBowls .subcategory-header {
-  color: #FF6B6B;
-  border-color: #FF6B6B;
+  color: #ff4081;
+  border-color: #ff4081;
+  background: rgba(255, 64, 129, 0.1);
 }
 
+/* Shrimp - Light Pink */
+.subcategory-section.shrimp .subcategory-header,
 .subcategory-section.shrimpRiceBowls .subcategory-header,
 .subcategory-section.shrimpNoodles .subcategory-header,
 .subcategory-section.shrimpFriedRice .subcategory-header {
-  color: #4682B4;
-  border-color: #4682B4;
+  color: #ff6b9d;
+  border-color: #ff6b9d;
+  background: rgba(255, 107, 157, 0.1);
 }
 
+/* Tofu - Green */
+.subcategory-section.tofu .subcategory-header,
+.subcategory-section.tofuRiceBowls .subcategory-header {
+  color: #4caf50;
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+}
+
+/* Cauliflower - Light Green */
+.subcategory-section.cauliflower .subcategory-header,
 .subcategory-section.cauliflowerUrbanBowls .subcategory-header,
 .subcategory-section.vegetableFriedRice .subcategory-header {
-  color: #228B22;
-  border-color: #228B22;
+  color: #8bc34a;
+  border-color: #8bc34a;
+  background: rgba(139, 195, 74, 0.1);
+}
+
+/* Pork - Pink-Red */
+.subcategory-section.pork .subcategory-header,
+.subcategory-section.porkRiceBowls .subcategory-header {
+  color: #e91e63;
+  border-color: #e91e63;
+  background: rgba(233, 30, 99, 0.1);
+}
+
+/* Fish - Light Blue */
+.subcategory-section.fish .subcategory-header,
+.subcategory-section.fishRiceBowls .subcategory-header {
+  color: #03a9f4;
+  border-color: #03a9f4;
+  background: rgba(3, 169, 244, 0.1);
 }
 
 /* Regular category styling */
@@ -3072,7 +3121,6 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 .sauce-highlight {
   background-color: #ffeb3b !important;
   color: #000000 !important;
-  text-decoration: underline !important;
   font-weight: bold !important;
   padding: 0 2px;
   border-radius: 2px;
