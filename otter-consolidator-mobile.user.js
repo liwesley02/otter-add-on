@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      4.9.0
+// @version      4.9.1
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -3071,6 +3071,7 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 /* Sauce highlighting */
 .sauce-highlight {
   background-color: #ffeb3b !important;
+  color: #000000 !important;
   text-decoration: underline !important;
   font-weight: bold !important;
   padding: 0 2px;
