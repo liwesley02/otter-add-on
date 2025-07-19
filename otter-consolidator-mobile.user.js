@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.0.7
+// @version      5.0.2
 // @description  Consolidate orders and print batch labels for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -5053,11 +5053,7 @@ body {
         const modifiers = itemData.modifiers || itemData;
         const proteinType = itemData.proteinType || modifiers.proteinType || '';
         const sauce = itemData.sauce || modifiers.sauce || '';
-        // Build modifierDetails from either nested property or direct properties
-        const modifierDetails = itemData.modifierDetails || {
-          dumplingChoice: itemData.dumplingChoice || null,
-          riceSubstitution: itemData.riceSubstitution || null
-        };
+        const modifierDetails = itemData.modifierDetails || {};
         const isRiceBowl = itemData.isRiceBowl || (itemName && itemName.toLowerCase().includes('rice bowl'));
         const isUrbanBowl = itemData.isUrbanBowl || (itemName && itemName.toLowerCase().includes('urban bowl'));
         
@@ -5075,7 +5071,7 @@ body {
         // Enhanced logging for debugging
         const debugEnabled = window.logger && typeof window.logger.isDebugEnabled === 'function' && window.logger.isDebugEnabled();
         
-        if (isRiceBowl || isUrbanBowl || debugEnabled) {
+        if (isRiceBowl || debugEnabled) {
           console.log(`[CategoryManager] === CATEGORIZATION START ===`);
           console.log(`[CategoryManager] Item: "${itemName}"`);
           console.log(`[CategoryManager] Size: "${itemSize}" (type: ${typeof itemSize})`);
@@ -5084,8 +5080,7 @@ body {
             sauce: sauce,
             isRiceBowl: isRiceBowl,
             isUrbanBowl: isUrbanBowl,
-            modifierDetails: modifierDetails,
-            rawItemData: itemData
+            modifierDetails: modifierDetails
           });
         }
         
@@ -5440,12 +5435,6 @@ body {
         // Store rice substitution info for Urban Bowls (but don't change subcategory)
         if (topCategoryKey === 'urban-bowls' && modifierDetails.riceSubstitution) {
           modifiers.riceSubstitution = modifierDetails.riceSubstitution;
-        }
-        
-        // IMPORTANT: Store dumpling choice for Urban Bowls
-        if (topCategoryKey === 'urban-bowls' && modifierDetails.dumplingChoice) {
-          modifiers.dumplingChoice = modifierDetails.dumplingChoice;
-          console.log(`[CategoryManager] Transferring dumplingChoice to modifiers: ${modifierDetails.dumplingChoice}`);
         }
         
         if (subCategoryName && subCategoryName !== 'General') {
@@ -8645,21 +8634,11 @@ body {
                 if (item.modifierCustomerItemIds && size !== 'urban') {
                   console.log(\`Checking \${item.modifierCustomerItemIds.length} modifiers for \${itemName}\`);
                   
-                  item.modifierCustomerItemIds.forEach((modId, modIndex) => {
+                  item.modifierCustomerItemIds.forEach(modId => {
                     const modifier = modifiersMap[modId];
                     const stationMod = stationModifiers[modId];
                     
                     console.log(\`Checking modifier ID \${modId}, found in map: \${!!modifier}\`);
-                    
-                    // Enhanced logging for Urban Bowls
-                    if (itemName.toLowerCase().includes('urban bowl')) {
-                      console.log(\`[Urban Bowl] Modifier #\${modIndex + 1}:\`, {
-                        modId: modId,
-                        modifierName: modifier?.orderItemDetail?.name || 'Unknown',
-                        hasStationMod: !!stationMod,
-                        sectionName: stationMod?.sectionName || 'No section'
-                      });
-                    }
                     
                     // Check if this is an additional item based on section
                     if (stationMod && stationMod.sectionName) {
@@ -8670,31 +8649,15 @@ body {
                       
                       console.log(\`  Station modifier section: \${stationMod.sectionName}, item: \${modName}\`);
                       
-                      // Debug Urban Bowl modifiers
-                      if (itemName.toLowerCase().includes('urban bowl')) {
-                        console.log(\`  [Urban Bowl Modifier] Section: "\${stationMod.sectionName}" (lowercase: "\${sectionName}")\`);
-                        console.log(\`  [Urban Bowl Modifier] Checking if includes "choice of 3 piece dumplings": \${sectionName.includes('choice of 3 piece dumplings')}\`);
-                        console.log(\`  [Urban Bowl Modifier] Modifier name: "\${modName}"\`);
-                      }
-                      
                       // Check for Urban Bowl dumplings FIRST
-                      if (itemName.toLowerCase().includes('urban bowl')) {
-                        // Check if this is a dumpling by section name or modifier name
-                        const isDumplingBySection = sectionName.includes('choice') && sectionName.includes('dumpling');
-                        const isDumplingByName = modName.toLowerCase().includes('dumpling') && 
-                                                 (modName.toLowerCase().includes('pork') || 
-                                                  modName.toLowerCase().includes('chicken') || 
-                                                  modName.toLowerCase().includes('vegetable') ||
-                                                  modName.toLowerCase().includes('veggie'));
-                        
-                        if (isDumplingBySection || isDumplingByName) {
-                          // This is a dumpling choice for Urban Bowl
-                          modifierDetails.dumplingChoice = modName;
-                          const modPrice = modifier && modifier.orderItemDetail && modifier.orderItemDetail.salePrice ? 
-                                          this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice) : 0;
-                          modifiersList.push({ name: modName, price: modPrice, integrated: true });
-                          console.log(\`  Urban Bowl dumpling choice detected: "\${modName}" (section: "\${stationMod.sectionName}")\`);
-                        }
+                      if (itemName.toLowerCase().includes('urban bowl') && 
+                          (sectionName.includes('choice of 3 piece dumplings') || 
+                           sectionName.includes('dumpling') ||
+                           modName.toLowerCase().includes('dumpling'))) {
+                        // This is a dumpling choice for Urban Bowl
+                        modifierDetails.dumplingChoice = modName;
+                        modifiersList.push({ name: modName, integrated: true });
+                        console.log(\`  Urban Bowl dumpling choice detected: "\${modName}"\`);
                       }
                       // Check if this should be a separate item
                       else if (sectionName.includes('add') || 
@@ -8718,28 +8681,12 @@ body {
                               (modName.toLowerCase().includes('fried rice') || 
                                modName.toLowerCase().includes('noodle'))) {
                             modifierDetails.riceSubstitution = modName;
-                            const modPrice = modifier && modifier.orderItemDetail && modifier.orderItemDetail.salePrice ? 
-                                            this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice) : 0;
-                            modifiersList.push({ name: modName, price: modPrice, integrated: true });
+                            modifiersList.push({ name: modName, integrated: true });
                             console.log(\`  Urban Bowl rice substitution: "\${modName}"\`);
                           } else {
                             sizeModifiers.push(modName);
                             console.log(\`  Added as size modifier: "\${modName}"\`);
                           }
-                        }
-                        
-                        // IMPORTANT: Add ALL modifiers to the modifiersList regardless of type
-                        // This ensures no modifiers are lost
-                        if (modName && !modifiersList.some(m => m.name === modName)) {
-                          const modPrice = modifier && modifier.orderItemDetail && modifier.orderItemDetail.salePrice ? 
-                                          this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice) : 0;
-                          modifiersList.push({ 
-                            name: modName, 
-                            price: modPrice, 
-                            integrated: false,
-                            sectionName: stationMod.sectionName 
-                          });
-                          console.log(\`  Added modifier to list: "\${modName}" (price: \${modPrice})\`);
                         }
                       }
                     } else if (modifier && modifier.orderItemDetail) {
@@ -8748,64 +8695,31 @@ body {
                       console.log(\`  Modifier name: "\${modName}"\`);
                       
                       // Check for Urban Bowl dumplings
-                      if (itemName.toLowerCase().includes('urban bowl')) {
-                        // Check if this is a dumpling modifier by name
-                        const isDumpling = modNameLower.includes('dumpling') && 
-                                          (modNameLower.includes('pork') || 
-                                           modNameLower.includes('chicken') || 
-                                           modNameLower.includes('vegetable') ||
-                                           modNameLower.includes('veggie'));
-                        
-                        if (isDumpling) {
-                          modifierDetails.dumplingChoice = modName;
-                          const modPrice = modifier && modifier.orderItemDetail && modifier.orderItemDetail.salePrice ? 
-                                          this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice) : 0;
-                          modifiersList.push({ name: modName, price: modPrice, integrated: true });
-                          console.log(\`  Urban Bowl dumpling choice (no section): "\${modName}"\`);
-                        } else if (modNameLower.includes('dumpling')) {
-                          // Generic dumpling without specific type
-                          modifierDetails.dumplingChoice = modName;
-                          const modPrice = modifier && modifier.orderItemDetail && modifier.orderItemDetail.salePrice ? 
-                                          this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice) : 0;
-                          modifiersList.push({ name: modName, price: modPrice, integrated: true });
-                          console.log(\`  Urban Bowl dumpling (generic) detected: "\${modName}"\`);
-                        } else {
-                          // Any other Urban Bowl modifier - add it to the list
-                          const modPrice = modifier && modifier.orderItemDetail && modifier.orderItemDetail.salePrice ? 
-                                          this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice) : 0;
-                          modifiersList.push({ name: modName, price: modPrice, integrated: false });
-                          console.log(\`  Urban Bowl other modifier added: "\${modName}"\`);
-                        }
+                      if (itemName.toLowerCase().includes('urban bowl') && 
+                          modNameLower.includes('dumpling')) {
+                        modifierDetails.dumplingChoice = modName;
+                        modifiersList.push({ name: modName, integrated: true });
+                        console.log(\`  Urban Bowl dumpling choice (no section): "\${modName}"\`);
                       }
                       // Check for Urban Bowl rice substitution
                       else if (itemName.toLowerCase().includes('urban bowl') && 
                                (modNameLower.includes('fried rice') || 
                                 modNameLower.includes('noodle'))) {
                         modifierDetails.riceSubstitution = modName;
-                        const modPrice = modifier && modifier.orderItemDetail && modifier.orderItemDetail.salePrice ? 
-                                        this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice) : 0;
-                        modifiersList.push({ name: modName, price: modPrice, integrated: true });
+                        modifiersList.push({ name: modName, integrated: true });
                         console.log(\`  Urban Bowl rice substitution (no section): "\${modName}"\`);
                       }
-                      // Add ALL other modifiers to the list regardless of type
-                      else {
-                        const modPrice = modifier && modifier.orderItemDetail && modifier.orderItemDetail.salePrice ? 
-                                        this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice) : 0;
-                        
-                        // Still categorize for size building
-                        if (modNameLower.includes('small') || 
-                            modNameLower.includes('large') || 
-                            modNameLower.includes('rice') || 
-                            modNameLower.includes('noodle')) {
-                          sizeModifiers.push(modName);
-                          modifiersList.push({ name: modName, price: modPrice, integrated: true });
-                          console.log(\`Added to size modifiers and modifiersList: \${modName}\`);
-                        } else {
-                          // Otherwise it might be an additional item
-                          additionalItems.push(modName);
-                          modifiersList.push({ name: modName, price: modPrice, integrated: false });
-                          console.log(\`Added as additional item and to modifiersList: \${modName}\`);
-                        }
+                      // Only add as size modifier if it's actually about size/rice
+                      else if (modNameLower.includes('small') || 
+                          modNameLower.includes('large') || 
+                          modNameLower.includes('rice') || 
+                          modNameLower.includes('noodle')) {
+                        sizeModifiers.push(modName);
+                        console.log(\`Added to size modifiers: \${modName}\`);
+                      } else {
+                        // Otherwise it might be an additional item
+                        additionalItems.push(modName);
+                        console.log(\`Added as additional item: \${modName}\`);
                       }
                     }
                   });
@@ -8848,15 +8762,6 @@ body {
                   }
                 }
                 
-                // Create a properly formatted modifiers array with prices
-                const formattedModifiers = modifiersList.map(mod => {
-                  return {
-                    name: typeof mod === 'string' ? mod : (mod.name || 'Unknown Modifier'),
-                    price: mod.price || 0,
-                    integrated: mod.integrated || false
-                  };
-                });
-                
                 items.push({
                   name: itemName,
                   quantity: quantity,
@@ -8864,19 +8769,13 @@ body {
                   note: itemNote,
                   isRiceBowl: itemName.toLowerCase().includes('rice bowl'),
                   isUrbanBowl: itemName.toLowerCase().includes('urban bowl'),
-                  modifiers: formattedModifiers,
+                  modifiers: modifiersList,
                   modifierDetails: modifierDetails
                 });
                 
                 // Debug log for Urban Bowls
                 if (itemName.toLowerCase().includes('urban bowl')) {
-                  console.log(\`[PageContext] Urban Bowl item pushed:\`, {
-                    name: itemName,
-                    modifierDetails: modifierDetails,
-                    modifiersList: modifiersList,
-                    hasDumplingChoice: !!modifierDetails.dumplingChoice,
-                    dumplingChoice: modifierDetails.dumplingChoice
-                  });
+                  console.log(\`[PageContext] Urban Bowl item pushed with modifierDetails:\`, modifierDetails);
                 }
                 
                 console.log(\`Item \${idx + 1}: \${itemName} (\${size}) x\${quantity}\`);
@@ -9573,7 +9472,6 @@ body {
                   
                   // Special handling for Urban Bowl modifiers
                   if (isUrbanBowl) {
-                    console.log(`[ReactDataExtractor] Processing Urban Bowl modifier: ${modName} (integrated: ${isIntegrated})`);
                     // Check for rice substitution
                     if (modNameLower.includes('fried rice') || modNameLower.includes('noodle')) {
                       parsedItem.modifiers.riceSubstitution = modName;
@@ -9676,11 +9574,8 @@ body {
         
         // Special case: Dumplings in Urban Bowls should be integrated (not separate)
         // Keep them as part of the Urban Bowl with tags
-        if (sectionName && sectionName.toLowerCase().includes('choice') && 
-            sectionName.toLowerCase().includes('3 piece') && 
-            sectionName.toLowerCase().includes('dumpling') && 
-            itemName.toLowerCase().includes('urban bowl')) {
-          console.log(`[ReactDataExtractor] Dumplings in Urban Bowl will be integrated as tags: ${modifierName} (section: ${sectionName})`);
+        if (sectionName === 'Choice of 3 piece Dumplings' && itemName.toLowerCase().includes('urban bowl')) {
+          console.log(`[ReactDataExtractor] Dumplings in Urban Bowl will be integrated as tags: ${modifierName}`);
           return true; // Changed from false to true - integrate as modifiers
         }
         
@@ -17096,13 +16991,8 @@ body {
                   // Debug log for Urban Bowls
                   if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl')) {
                     console.log(`[Overlay] Categorizing Urban Bowl: ${item.name}`);
-                    console.log(`[Overlay] Item structure:`, {
-                      hasModifiers: !!item.modifiers,
-                      modifiersCount: item.modifiers?.length || 0,
-                      hasModifierDetails: !!item.modifierDetails,
-                      modifierDetails: item.modifierDetails,
-                      dumplingChoice: item.modifierDetails?.dumplingChoice
-                    });
+                    console.log(`[Overlay] Item modifiers:`, JSON.stringify(item.modifiers));
+                    console.log(`[Overlay] Item modifierDetails:`, JSON.stringify(item.modifierDetails));
                   }
                   
                   // Pass the complete item object to categoryManager
