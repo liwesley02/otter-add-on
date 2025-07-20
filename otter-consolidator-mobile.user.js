@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.0.4
+// @version      5.0.4.1
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -2690,90 +2690,6 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   margin-top: 5px;
 }
 
-/* Individual Orders Section */
-.individual-orders-section {
-  margin: 20px 0;
-  padding: 15px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-}
-
-.individual-orders-section h3 {
-  margin: 0 0 15px 0;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.orders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.order-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  padding: 12px;
-  transition: all 0.2s ease;
-}
-
-.order-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.order-card.overdue {
-  border-color: #dc3545;
-  background: rgba(220, 53, 69, 0.1);
-}
-
-.order-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.order-number {
-  font-weight: 600;
-  color: #4a9eff;
-  font-size: 14px;
-}
-
-.order-customer {
-  flex: 1;
-  margin: 0 10px;
-  color: #fff;
-  font-weight: 500;
-}
-
-.order-time {
-  font-size: 12px;
-  color: #999;
-}
-
-.order-time.overdue {
-  color: #dc3545;
-  font-weight: 600;
-}
-
-.order-details {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-}
-
-.order-items {
-  color: #999;
-}
-
-.order-notes {
-  color: #ffc107;
-  cursor: help;
-}
 
 
 /* Footer styles */
@@ -2843,10 +2759,6 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
 }
 
 /* Order Notes Styling */
-.order-card.has-notes {
-  border: 2px solid #ffa726;
-  background: rgba(255, 167, 38, 0.1);
-}
 
 .order-notes.clickable {
   cursor: pointer;
@@ -10063,6 +9975,9 @@ body {
               <input type="number" id="batch-capacity" class="batch-capacity-input" 
                      value="${this.batchManager.maxBatchCapacity}" min="1" max="20">
             </div>
+            <button class="clear-orders-btn" style="margin-left: 10px; padding: 5px 12px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background-color 0.2s ease;" onmouseover="this.style.backgroundColor='#c82333'" onmouseout="this.style.backgroundColor='#dc3545'">
+              Clear Orders
+            </button>
             <div class="debug-toggle" style="margin-left: auto;">
               <label style="display: flex; align-items: center; gap: 3px; font-size: 10px;">
                 <input type="checkbox" id="debug-mode-toggle" ${window.logger && window.logger.debugMode ? 'checked' : ''}>
@@ -10114,6 +10029,15 @@ body {
               window.logger.setDebugMode(enabled);
               this.showNotification(`Debug mode ${enabled ? 'enabled' : 'disabled'}`, 'info');
             }
+          });
+        }
+        
+        // Add Clear Orders button listener
+        const clearButton = footerContainer.querySelector('.clear-orders-btn');
+        if (clearButton) {
+          clearButton.addEventListener('click', () => {
+            this.clearCompletedOrders();
+            this.showNotification('Orders cleared', 'success');
           });
         }
         
