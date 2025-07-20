@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.0.4.1
+// @version      5.0.4.2
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -532,6 +532,29 @@ body:has(#otter-consolidator-overlay) > div:not(#otter-consolidator-overlay):not
   flex-shrink: 0;
   border-bottom: 1px solid #333;
   height: 45px;
+  position: relative;
+}
+
+.otter-clear-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: 1px solid #666;
+  color: #a0a0a0;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.otter-clear-btn:hover {
+  color: #dc3545;
+  border-color: #dc3545;
+  background: rgba(220, 53, 69, 0.1);
 }
 
 .otter-toggle {
@@ -9889,6 +9912,7 @@ body {
             <div class="otter-api-status" id="api-status-container">
               <!-- API status will be inserted here -->
             </div>
+            <button class="otter-clear-btn" title="Clear completed orders">🗑️</button>
           </div>
           
           <div class="otter-content">
@@ -9920,6 +9944,15 @@ body {
         this.overlayElement.querySelector('.otter-toggle').addEventListener('click', () => {
           this.toggleCollapse();
         });
+        
+        // Add clear button listener
+        const clearBtn = this.overlayElement.querySelector('.otter-clear-btn');
+        if (clearBtn) {
+          clearBtn.addEventListener('click', () => {
+            this.clearCompletedOrders();
+            this.showNotification('Orders cleared', 'success');
+          });
+        }
         
         
         // Add keyboard shortcut listener
@@ -9975,9 +10008,6 @@ body {
               <input type="number" id="batch-capacity" class="batch-capacity-input" 
                      value="${this.batchManager.maxBatchCapacity}" min="1" max="20">
             </div>
-            <button class="clear-orders-btn" style="margin-left: 10px; padding: 5px 12px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background-color 0.2s ease;" onmouseover="this.style.backgroundColor='#c82333'" onmouseout="this.style.backgroundColor='#dc3545'">
-              Clear Orders
-            </button>
             <div class="debug-toggle" style="margin-left: auto;">
               <label style="display: flex; align-items: center; gap: 3px; font-size: 10px;">
                 <input type="checkbox" id="debug-mode-toggle" ${window.logger && window.logger.debugMode ? 'checked' : ''}>
@@ -10032,14 +10062,7 @@ body {
           });
         }
         
-        // Add Clear Orders button listener
-        const clearButton = footerContainer.querySelector('.clear-orders-btn');
-        if (clearButton) {
-          clearButton.addEventListener('click', () => {
-            this.clearCompletedOrders();
-            this.showNotification('Orders cleared', 'success');
-          });
-        }
+        // Clear button listener moved to header
         
       }
       
@@ -10127,80 +10150,7 @@ body {
               <div class="batch-content">
           `;
           
-          // Add customer names section if there are orders
-          if (orderCount > 0) {
-            html += `
-              <div class="batch-customers">
-                <div class="batch-customers-header">Orders in this batch:</div>
-                <div class="batch-customer-list">
-            `;
-            
-            // Get customers sorted by elapsed time (oldest first - FIFO)
-            const customers = orderEntries.map(([orderId, order]) => ({
-              ...order,
-              orderId: orderId,
-              colorIndex: orderColorMap.get(orderId)
-            })).sort((a, b) => {
-              // Calculate elapsed times
-              let aElapsed = a.elapsedTime || 0;
-              let bElapsed = b.elapsedTime || 0;
-              
-              if (a.orderedAt) {
-                const aDate = new Date(a.orderedAt);
-                aElapsed = Math.floor((new Date() - aDate) / 60000);
-              }
-              if (b.orderedAt) {
-                const bDate = new Date(b.orderedAt);
-                bElapsed = Math.floor((new Date() - bDate) / 60000);
-              }
-              
-              // Sort by elapsed time descending (higher elapsed = older = should be first)
-              return bElapsed - aElapsed;
-            });
-            
-            customers.forEach(order => {
-              const orderClass = order.completed ? 'order-completed' : (order.isNew ? 'order-new' : '');
-              
-              // Calculate current elapsed time
-              let elapsedTime = order.elapsedTime || 0;
-              if (order.orderedAt) {
-                const orderedDate = new Date(order.orderedAt);
-                const now = new Date();
-                elapsedTime = Math.floor((now - orderedDate) / 60000);
-              }
-              
-              // Check if order is running late based on prep time
-              let isLate = false;
-              let lateIndicator = '';
-              if (window.otterPrepTimeTracker && elapsedTime > 0 && !order.completed) {
-                const stats = window.otterPrepTimeTracker.getLastHourAverage();
-                const avgPrepTime = stats.orderCount > 0 ? stats.averageMinutes : 
-                                   window.otterPrepTimeTracker.getTodayAverage().averageMinutes;
-                
-                if (avgPrepTime > 0 && elapsedTime > avgPrepTime) {
-                  isLate = true;
-                  const overBy = elapsedTime - avgPrepTime;
-                  lateIndicator = ` ⚠️ +${overBy}m`;
-                }
-              }
-              
-              const elapsedClass = elapsedTime >= 15 ? 'elapsed-overdue' : 
-                                 isLate ? 'prep-time-late' : '';
-              
-              html += `
-                <div class="batch-customer-badge ${orderClass} ${elapsedClass}" data-order-color="${order.colorIndex}">
-                  <span class="customer-name">${window.escapeHtml(order.customerName)}</span>
-                  <span class="customer-order">${window.escapeHtml(order.number || order.orderNumber)}</span>
-                  <span class="customer-wait-time">${window.escapeHtml(this.formatElapsedTime(elapsedTime))}${lateIndicator}</span>
-                </div>
-              `;
-            });
-            
-            html += `
-                </div>
-              </div>
-            `;
-          }
+          // Removed customer names section
           
           // Start two-column wrapper for items
           html += `<div class="wave-items-wrapper">`;
