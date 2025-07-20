@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.0.4.2
+// @version      5.0.4.3
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -9912,7 +9912,7 @@ body {
             <div class="otter-api-status" id="api-status-container">
               <!-- API status will be inserted here -->
             </div>
-            <button class="otter-clear-btn" title="Clear completed orders">🗑️</button>
+            <button class="otter-clear-btn" title="Clear completed orders">🗑️ Clear Orders</button>
           </div>
           
           <div class="otter-content">
@@ -10350,6 +10350,81 @@ body {
           // Close two-column wrapper
           html += `</div>`;
           
+          // Add customer names section if there are orders
+          if (orderCount > 0) {
+            html += `
+              <div class="batch-customers">
+                <div class="batch-customers-header">Orders in this batch:</div>
+                <div class="batch-customer-list">
+            `;
+            
+            // Get customers sorted by elapsed time (oldest first - FIFO)
+            const customers = orderEntries.map(([orderId, order]) => ({
+              ...order,
+              orderId: orderId,
+              colorIndex: orderColorMap.get(orderId)
+            })).sort((a, b) => {
+              // Calculate elapsed times
+              let aElapsed = a.elapsedTime || 0;
+              let bElapsed = b.elapsedTime || 0;
+              
+              if (a.orderedAt) {
+                const aDate = new Date(a.orderedAt);
+                aElapsed = Math.floor((new Date() - aDate) / 60000);
+              }
+              if (b.orderedAt) {
+                const bDate = new Date(b.orderedAt);
+                bElapsed = Math.floor((new Date() - bDate) / 60000);
+              }
+              
+              // Sort by elapsed time descending (higher elapsed = older = should be first)
+              return bElapsed - aElapsed;
+            });
+            
+            customers.forEach(order => {
+              const orderClass = order.completed ? 'order-completed' : (order.isNew ? 'order-new' : '');
+              
+              // Calculate current elapsed time
+              let elapsedTime = order.elapsedTime || 0;
+              if (order.orderedAt) {
+                const orderedDate = new Date(order.orderedAt);
+                const now = new Date();
+                elapsedTime = Math.floor((now - orderedDate) / 60000);
+              }
+              
+              // Check if order is running late based on prep time
+              let isLate = false;
+              let lateIndicator = '';
+              if (window.otterPrepTimeTracker && elapsedTime > 0 && !order.completed) {
+                const stats = window.otterPrepTimeTracker.getLastHourAverage();
+                const avgPrepTime = stats.orderCount > 0 ? stats.averageMinutes : 
+                                   window.otterPrepTimeTracker.getTodayAverage().averageMinutes;
+                
+                if (avgPrepTime > 0 && elapsedTime > avgPrepTime) {
+                  isLate = true;
+                  const overBy = elapsedTime - avgPrepTime;
+                  lateIndicator = ` ⚠️ +${overBy}m`;
+                }
+              }
+              
+              const elapsedClass = elapsedTime >= 15 ? 'elapsed-overdue' : 
+                                 isLate ? 'prep-time-late' : '';
+              
+              html += `
+                <div class="batch-customer-badge ${orderClass} ${elapsedClass}" data-order-color="${order.colorIndex}">
+                  <span class="customer-name">${window.escapeHtml(order.customerName)}</span>
+                  <span class="customer-order">${window.escapeHtml(order.number || order.orderNumber)}</span>
+                  <span class="customer-wait-time">${window.escapeHtml(this.formatElapsedTime(elapsedTime))}${lateIndicator}</span>
+                </div>
+              `;
+            });
+            
+            html += `
+                </div>
+              </div>
+            `;
+          }
+          
           // Batch actions
           // Batch actions removed - batches lock automatically when full
           
@@ -10359,8 +10434,7 @@ body {
           `;
         });
         
-        // Add individual orders section
-        html += this.renderIndividualOrders();
+        // Individual orders section removed for cleaner UI
         
         container.innerHTML = html;
         
@@ -10397,70 +10471,7 @@ body {
         }
       }
       
-      renderIndividualOrders() {
-        const orders = this.orderBatcher.getAllOrders();
-        if (!orders || orders.length === 0) {
-          return '';
-        }
-        
-        let html = `
-          <div class="individual-orders-section">
-            <h3>Individual Orders</h3>
-            <div class="orders-list">
-        `;
-        
-        // Sort orders by order number
-        const sortedOrders = [...orders].sort((a, b) => {
-          const numA = parseInt(a.orderNumber) || 0;
-          const numB = parseInt(b.orderNumber) || 0;
-          return numA - numB;
-        });
-        
-        sortedOrders.forEach(order => {
-          const customerName = order.recipientName || order.customerName;
-          // Calculate elapsed time from orderedAt
-          let elapsedTime = 0;
-          if (order.orderedAt) {
-            const orderedDate = new Date(order.orderedAt);
-            const now = new Date();
-            elapsedTime = Math.floor((now - orderedDate) / 60000); // Convert to minutes
-          } else if (order.elapsedTime) {
-            elapsedTime = order.elapsedTime;
-          }
-          const isOverdue = elapsedTime >= 15;
-          
-          // Count items for this order
-          let itemCount = 0;
-          const batchedItems = this.orderBatcher.getBatchedItems();
-          batchedItems.forEach(item => {
-            const orderItem = item.orders.find(o => o.orderId === order.id);
-            if (orderItem) {
-              itemCount += orderItem.quantity;
-            }
-          });
-          
-          html += `
-            <div class="order-card ${isOverdue ? 'overdue' : ''} ${order.orderNotes ? 'has-notes' : ''}">
-              <div class="order-header">
-                <span class="order-number">#${order.orderNumber}</span>
-                <span class="order-customer">${customerName}</span>
-                <span class="order-time ${isOverdue ? 'overdue' : ''}">${this.formatElapsedTime(elapsedTime)}</span>
-              </div>
-              <div class="order-details">
-                <span class="order-items">${itemCount} items</span>
-                ${order.orderNotes ? `<span class="order-notes clickable" data-order-number="${order.orderNumber}" data-customer="${customerName}" data-notes="${order.orderNotes.replace(/"/g, '&quot;')}" title="Click to view note">📝 Note</span>` : ''}
-              </div>
-            </div>
-          `;
-        });
-        
-        html += `
-            </div>
-          </div>
-        `;
-        
-        return html;
-      }
+      // renderIndividualOrders method removed - no longer needed
       
       renderBatchTabs() {
         const waveTabsContainer = this.overlayElement.querySelector('#wave-tabs');
