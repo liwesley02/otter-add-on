@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.1.1
+// @version      5.1.2
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -5103,11 +5103,26 @@ body {
             if (window.logger) {
               window.logger.debug(`[BatchManager] Creating new batch item for: ${item.name}`);
             }
+            
+            // Debug logging for Rice/Urban Bowls
+            if (item.isRiceBowl || item.isUrbanBowl || (item.name && (item.name.toLowerCase().includes('rice bowl') || item.name.toLowerCase().includes('urban bowl')))) {
+              console.log(`[BatchManager] Creating batch item with modifierDetails:`, {
+                name: item.name,
+                modifierDetails: item.modifierDetails,
+                isRiceBowl: item.isRiceBowl,
+                isUrbanBowl: item.isUrbanBowl
+              });
+            }
+            
             const batchItem = {
               ...item,
               orderIds: [],
               totalQuantity: 0,
-              batchQuantity: 0
+              batchQuantity: 0,
+              // Explicitly copy modifierDetails to ensure it's not lost
+              modifierDetails: item.modifierDetails || {},
+              isRiceBowl: item.isRiceBowl || false,
+              isUrbanBowl: item.isUrbanBowl || false
             };
             batch.items.set(key, batchItem);
           }
@@ -5271,9 +5286,24 @@ body {
         if (!categorized[category]) {
           categorized[category] = [];
         }
+        // Debug logging for Rice/Urban Bowls
+        if (item.isRiceBowl || item.isUrbanBowl || (item.name && (item.name.toLowerCase().includes('rice bowl') || item.name.toLowerCase().includes('urban bowl')))) {
+          console.log(`[BatchManager.getBatchByCategory] Item being categorized:`, {
+            name: item.name,
+            modifierDetails: item.modifierDetails,
+            isRiceBowl: item.isRiceBowl,
+            isUrbanBowl: item.isUrbanBowl,
+            hasModifierDetails: !!item.modifierDetails
+          });
+        }
+        
         categorized[category].push({
           ...item,
-          key
+          key,
+          // Ensure modifierDetails is preserved
+          modifierDetails: item.modifierDetails || {},
+          isRiceBowl: item.isRiceBowl || false,
+          isUrbanBowl: item.isUrbanBowl || false
         });
       });
       
@@ -5311,8 +5341,25 @@ body {
         // Add item to the appropriate group
         const sizeGroupItem = {
           ...item,
-          key
+          key,
+          // Explicitly preserve these properties
+          modifierDetails: item.modifierDetails || {},
+          modifiers: item.modifiers || [],
+          isRiceBowl: item.isRiceBowl || false,
+          isUrbanBowl: item.isUrbanBowl || false
         };
+        
+        // Debug logging for Rice/Urban Bowls
+        if (item.isRiceBowl || item.isUrbanBowl || (item.name && (item.name.toLowerCase().includes('rice bowl') || item.name.toLowerCase().includes('urban bowl')))) {
+          console.log(`[BatchManager.getBatchBySize] Creating sizeGroupItem:`, {
+            name: item.name,
+            modifierDetails: sizeGroupItem.modifierDetails,
+            isRiceBowl: sizeGroupItem.isRiceBowl,
+            isUrbanBowl: sizeGroupItem.isUrbanBowl,
+            hasModifierDetails: !!sizeGroupItem.modifierDetails,
+            sauceInModifierDetails: sizeGroupItem.modifierDetails?.sauce
+          });
+        }
         
         if (window.logger) {
           window.logger.debug(`[BatchManager] Adding item to group ${displayName}: ${sizeGroupItem.name}`);
@@ -10361,6 +10408,18 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               `;
               
               items.forEach(item => {
+                // Debug check at the very start of rendering
+                if (item.isRiceBowl || item.isUrbanBowl || (item.name && (item.name.toLowerCase().includes('rice bowl') || item.name.toLowerCase().includes('urban bowl')))) {
+                  console.log(`[Batch View Render] About to render item:`, {
+                    name: item.name,
+                    modifierDetails: item.modifierDetails,
+                    modifiers: item.modifiers,
+                    isRiceBowl: item.isRiceBowl,
+                    isUrbanBowl: item.isUrbanBowl,
+                    hasModifierDetails: !!item.modifierDetails,
+                    sauceInModifierDetails: item.modifierDetails?.sauce
+                  });
+                }
                 // Check elapsed time for orders associated with this item
                 let isOverdue = false;
                 let maxElapsedTime = 0;
