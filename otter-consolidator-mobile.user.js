@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.1
+// @version      5.2.2-debug
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -4043,6 +4044,10 @@ body {
             isUrbanBowl: item.isUrbanBowl || false,
             isRiceBowl: item.isRiceBowl || false,
             riceSubstitution: item.riceSubstitution || null,
+            // Add top-level properties
+            dumplingType: item.dumplingType || null,
+            riceSubType: item.riceSubType || null,
+            sauceType: item.sauceType || null,
             orders: [],
             totalQuantity: 0
           });
@@ -5122,8 +5127,23 @@ body {
               // Explicitly copy modifierDetails to ensure it's not lost
               modifierDetails: item.modifierDetails || {},
               isRiceBowl: item.isRiceBowl || false,
-              isUrbanBowl: item.isUrbanBowl || false
+              isUrbanBowl: item.isUrbanBowl || false,
+              // Preserve top-level properties for tags
+              dumplingType: item.dumplingType || null,
+              riceSubType: item.riceSubType || null,
+              sauceType: item.sauceType || null
             };
+            
+            // Debug log for Urban Bowls
+            if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl')) {
+              console.log(`[BatchManager] Creating batch item for Urban Bowl:`, {
+                name: item.name,
+                modifierDetails: batchItem.modifierDetails,
+                dumplingType: batchItem.dumplingType,
+                riceSubType: batchItem.riceSubType
+              });
+            }
+            
             batch.items.set(key, batchItem);
           }
           
@@ -5345,6 +5365,10 @@ body {
           // Explicitly preserve these properties
           modifierDetails: item.modifierDetails || {},
           modifiers: item.modifiers || [],
+          // Preserve top-level properties for tags
+          dumplingType: item.dumplingType || null,
+          riceSubType: item.riceSubType || null,
+          sauceType: item.sauceType || null,
           isRiceBowl: item.isRiceBowl || false,
           isUrbanBowl: item.isUrbanBowl || false
         };
@@ -5357,7 +5381,10 @@ body {
             isRiceBowl: sizeGroupItem.isRiceBowl,
             isUrbanBowl: sizeGroupItem.isUrbanBowl,
             hasModifierDetails: !!sizeGroupItem.modifierDetails,
-            sauceInModifierDetails: sizeGroupItem.modifierDetails?.sauce
+            sauceInModifierDetails: sizeGroupItem.modifierDetails?.sauce,
+            dumplingType: sizeGroupItem.dumplingType,
+            riceSubType: sizeGroupItem.riceSubType,
+            sauceType: sizeGroupItem.sauceType
           });
         }
         
@@ -7321,6 +7348,10 @@ function extractOrdersFromReact() {
               // Debug log for Urban Bowls
               if (itemName.toLowerCase().includes('urban bowl')) {
                 console.log(\`[PageContext] Urban Bowl item pushed with modifierDetails:\`, modifierDetails);
+                console.log(\`[PageContext] Urban Bowl top-level properties:`, {
+                  dumplingType: modifierDetails.dumplingChoice || null,
+                  riceSubType: modifierDetails.riceSubstitution || null
+                });
               }
               
               console.log(\`Item \${idx + 1}: \${itemName} (\${size}) x\${quantity}\`);
@@ -10600,9 +10631,10 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                       
                       // Check for Urban Bowl rice substitution
                       if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
-                          item.modifierDetails && item.modifierDetails.riceSubstitution && 
-                          item.modifierDetails.riceSubstitution !== 'White Rice') {
-                        const riceSub = item.modifierDetails.riceSubstitution.toLowerCase();
+                          ((item.modifierDetails && item.modifierDetails.riceSubstitution && 
+                            item.modifierDetails.riceSubstitution !== 'White Rice') ||
+                           (item.riceSubType && item.riceSubType !== 'White Rice'))) {
+                        const riceSub = (item.riceSubType || (item.modifierDetails && item.modifierDetails.riceSubstitution) || '').toLowerCase();
                         let riceType = '';
                         let riceClass = '';
                         
@@ -10630,7 +10662,8 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                           dumplingType: item.dumplingType,
                           riceSubType: item.riceSubType,
                           hasModifierDetails: !!item.modifierDetails,
-                          modifierDetails: item.modifierDetails
+                          modifierDetails: item.modifierDetails,
+                          allItemProperties: Object.keys(item)
                         });
                       }
                       if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
