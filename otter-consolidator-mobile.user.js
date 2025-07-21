@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.7-debug
+// @version      5.3.0-debug
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
@@ -40,39 +40,95 @@
         eruda.show();
         eruda.get('console').show();
         console.log('[DEBUG] Eruda mobile console initialized for tablet debugging');
-        
-        // Add custom debug button for Urban Bowl issues
-        setTimeout(() => {
-          const debugBtn = document.createElement('button');
-          debugBtn.innerHTML = '🍜 Debug Bowls';
-          debugBtn.style.cssText = 'position: fixed; bottom: 60px; right: 20px; z-index: 100000; padding: 10px; background: #ff6b6b; color: white; border: none; border-radius: 5px; font-size: 14px;';
-          debugBtn.onclick = function() {
-            console.log('=== URBAN BOWL DEBUG SUMMARY ===');
-            if (window.batchManager && window.batchManager.batches) {
-              window.batchManager.batches.forEach((batch, idx) => {
-                console.log(`\nBatch ${idx + 1}:`);
-                batch.items.forEach((item, key) => {
-                  if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl') || 
-                      item.isRiceBowl || item.name.toLowerCase().includes('rice bowl')) {
-                    console.log(`\n${item.name}:`);
-                    console.log('- modifierDetails:', item.modifierDetails);
-                    console.log('- dumplingType:', item.dumplingType);
-                    console.log('- riceSubType:', item.riceSubType);
-                    console.log('- sauceType:', item.sauceType);
-                    console.log('- modifiers array:', item.modifiers);
-                    console.log('- Full item:', item);
-                  }
-                });
-              });
-            } else {
-              console.log('No batch manager found yet');
-            }
-          };
-          document.body.appendChild(debugBtn);
-        }, 2000);
       } 
     }
   })();
+  
+  // Add debug button regardless of Eruda
+  setTimeout(() => {
+    const debugBtn = document.createElement('button');
+    debugBtn.innerHTML = '🍜 Debug Bowls';
+    debugBtn.style.cssText = 'position: fixed; bottom: 100px; right: 20px; z-index: 999999; padding: 15px; background: #ff6b6b; color: white; border: none; border-radius: 5px; font-size: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);';
+    debugBtn.onclick = function() {
+      // Create debug panel
+      const debugPanel = document.createElement('div');
+      debugPanel.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 2px solid #333; padding: 20px; z-index: 999999; max-width: 90%; max-height: 80%; overflow: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);';
+      
+      let debugHtml = '<h3>🍜 Urban Bowl Debug Info</h3>';
+      debugHtml += '<button onclick="this.parentElement.remove()" style="float: right; padding: 5px 10px;">Close</button>';
+      debugHtml += '<div style="clear: both;"></div>';
+      
+        console.log('=== URBAN BOWL DEBUG SUMMARY ===');
+        
+        if (window.batchManager && window.batchManager.batches) {
+          debugHtml += '<h4>Batch Manager Data:</h4>';
+          
+          window.batchManager.batches.forEach((batch, idx) => {
+            console.log(`\nBatch ${idx + 1}:`);
+            let foundBowls = false;
+            
+            batch.items.forEach((item, key) => {
+              if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl') || 
+                  item.isRiceBowl || item.name.toLowerCase().includes('rice bowl')) {
+                foundBowls = true;
+                debugHtml += `<div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">`;
+                debugHtml += `<strong>${item.name}</strong><br>`;
+                debugHtml += `Type: ${item.isUrbanBowl ? 'Urban Bowl' : 'Rice Bowl'}<br>`;
+                debugHtml += `dumplingType: <span style="color: ${item.dumplingType ? 'green' : 'red'}">${item.dumplingType || 'NULL'}</span><br>`;
+                debugHtml += `sauceType: <span style="color: ${item.sauceType ? 'green' : 'red'}">${item.sauceType || 'NULL'}</span><br>`;
+                debugHtml += `riceSubType: ${item.riceSubType || 'NULL'}<br>`;
+                debugHtml += `modifierDetails: ${JSON.stringify(item.modifierDetails)}<br>`;
+                debugHtml += `modifiers array length: ${item.modifiers ? item.modifiers.length : 0}<br>`;
+                if (item.modifiers && item.modifiers.length > 0) {
+                  debugHtml += `modifiers: ${JSON.stringify(item.modifiers)}<br>`;
+                }
+                debugHtml += `</div>`;
+                
+                console.log(`\n${item.name}:`);
+                console.log('- modifierDetails:', item.modifierDetails);
+                console.log('- dumplingType:', item.dumplingType);
+                console.log('- riceSubType:', item.riceSubType);
+                console.log('- sauceType:', item.sauceType);
+                console.log('- modifiers array:', item.modifiers);
+              }
+            });
+            
+            if (!foundBowls) {
+              debugHtml += `<p>No Urban/Rice Bowls in batch ${idx + 1}</p>`;
+            }
+          });
+        } else {
+          debugHtml += '<p style="color: red;">No batch manager found!</p>';
+          console.log('No batch manager found yet');
+        }
+        
+        // Also check orderBatcher
+        if (window.orderBatcher) {
+          debugHtml += '<h4>Order Batcher Data:</h4>';
+          const orders = window.orderBatcher.getAllOrders();
+          orders.forEach(order => {
+            order.items.forEach(item => {
+              if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl') || 
+                  item.isRiceBowl || item.name.toLowerCase().includes('rice bowl')) {
+                debugHtml += `<div style="border: 1px solid #00f; padding: 5px; margin: 5px 0;">`;
+                debugHtml += `Order ${order.orderNumber}: ${item.name}<br>`;
+                debugHtml += `Raw modifiers: ${JSON.stringify(item.modifiers)}<br>`;
+                debugHtml += `</div>`;
+              }
+            });
+          });
+        }
+        
+      } catch (error) {
+        debugHtml += `<p style="color: red;">Error: ${error.message}</p>`;
+        console.error('Debug error:', error);
+      }
+      
+      debugPanel.innerHTML = debugHtml;
+      document.body.appendChild(debugPanel);
+    };
+    document.body.appendChild(debugBtn);
+  }, 3000);
   
   // Show immediate visual feedback
   const loadingIndicator = document.createElement('div');
@@ -7196,14 +7252,27 @@ function extractOrdersFromReact() {
           console.log(\`Processing \${itemsArray.length} items with modifiers map\`);
           console.log(\`Modifiers map has \${Object.keys(modifiersMap).length} entries\`);
           
-          // Debug: Log first few modifiers to see their structure
+          // Debug: Log ALL modifiers to see their structure
           const modifierKeys = Object.keys(modifiersMap);
-          if (modifierKeys.length > 0) {
-            console.log(\`[MODIFIER MAP SAMPLE] First modifier:\`, {
-              id: modifierKeys[0],
-              data: modifiersMap[modifierKeys[0]]
-            });
-          }
+          console.log(\`[MODIFIER MAP DEBUG] Total modifiers: \${modifierKeys.length}\`);
+          
+          modifierKeys.forEach(modId => {
+            const modifier = modifiersMap[modId];
+            const modDetail = modifier?.orderItemDetail || modifier?.data?.orderItemDetail;
+            const modName = modDetail?.name || 'NO NAME';
+            console.log(\`[MODIFIER MAP DEBUG] ID: \${modId}, Name: "\${modName}"\`);
+            
+            // For important modifiers, log full details
+            if (modName.toLowerCase().includes('dumpling') || 
+                modName.toLowerCase().includes('3 piece') ||
+                modName.toLowerCase().includes('sauce') ||
+                modName.toLowerCase().includes('top steak') ||
+                modName.toLowerCase().includes('top salmon') ||
+                modName.toLowerCase().includes('orange') ||
+                modName.toLowerCase().includes('chipotle')) {
+              console.log(\`[IMPORTANT MODIFIER] Full details for "\${modName}":\`, modifier);
+            }
+          });
           
           // Also get modifiers from stationOrders for section names
           let stationModifiers = {};
@@ -7248,6 +7317,25 @@ function extractOrdersFromReact() {
                 // Debug: Log all modifiers for Urban Bowls
                 if (itemName.toLowerCase().includes('urban bowl')) {
                   console.log(\`[URBAN BOWL DEBUG] All modifier IDs:\`, item.modifierCustomerItemIds);
+                  console.log(\`[URBAN BOWL DEBUG] modifiersMap keys:\`, Object.keys(modifiersMap));
+                  
+                  // Check each modifier ID
+                  item.modifierCustomerItemIds.forEach(modId => {
+                    console.log(\`[URBAN BOWL DEBUG] Looking for modifier ID: \${modId}\`);
+                    const modifier = modifiersMap[modId];
+                    if (modifier) {
+                      console.log(\`[URBAN BOWL DEBUG] Found modifier data:\`, modifier);
+                      if (modifier.data) {
+                        console.log(\`[URBAN BOWL DEBUG] modifier.data:\`, modifier.data);
+                        if (modifier.data.orderItemDetail) {
+                          console.log(\`[URBAN BOWL DEBUG] modifier.data.orderItemDetail:\`, modifier.data.orderItemDetail);
+                          console.log(\`[URBAN BOWL DEBUG] modifier name: "\${modifier.data.orderItemDetail.name || 'NO NAME'}"\`);
+                        }
+                      }
+                    } else {
+                      console.log(\`[URBAN BOWL DEBUG] Modifier ID \${modId} NOT FOUND in modifiersMap!\`);
+                    }
+                  });
                 }
                 
                 item.modifierCustomerItemIds.forEach(modId => {
@@ -7258,7 +7346,8 @@ function extractOrdersFromReact() {
                   
                   // Extra debug for Urban Bowls
                   if (itemName.toLowerCase().includes('urban bowl') && modifier) {
-                    const modName = modifier.orderItemDetail?.name || '';
+                    const modDetail = modifier.orderItemDetail || modifier.data?.orderItemDetail;
+                    const modName = modDetail?.name || '';
                     console.log(\`[URBAN BOWL MODIFIER] Name: "\${modName}"\`);
                     console.log(\`[URBAN BOWL MODIFIER] Full data:`, modifier);
                     if (modName.toLowerCase().includes('dumpling')) {
@@ -7269,9 +7358,10 @@ function extractOrdersFromReact() {
                   // Check if this is an additional item based on section
                   if (stationMod && stationMod.sectionName) {
                     const sectionName = stationMod.sectionName.toLowerCase();
+                    const modDetail = modifier?.orderItemDetail || modifier?.data?.orderItemDetail;
                     const modName = stationMod.stationItemDetail ? 
                       stationMod.stationItemDetail.name : 
-                      (modifier && modifier.orderItemDetail ? modifier.orderItemDetail.name : '');
+                      (modDetail ? modDetail.name : '');
                     
                     console.log(\`  Station modifier section: \${stationMod.sectionName}, item: \${modName}\`);
                     
@@ -7318,13 +7408,16 @@ function extractOrdersFromReact() {
                         }
                       }
                     }
-                  } else if (modifier && modifier.orderItemDetail) {
-                    const modName = modifier.orderItemDetail.name || '';
-                    const modNameLower = modName.toLowerCase();
-                    console.log(\`  Modifier name: "\${modName}"\`);
-                    
-                    // Check for Urban Bowl dumplings
-                    if (itemName.toLowerCase().includes('urban bowl')) {
+                  } else if (modifier) {
+                    // Handle both structures: modifier.orderItemDetail and modifier.data.orderItemDetail
+                    const modDetail = modifier.orderItemDetail || modifier.data?.orderItemDetail;
+                    if (modDetail) {
+                      const modName = modDetail.name || '';
+                      const modNameLower = modName.toLowerCase();
+                      console.log(\`  Modifier name: "\${modName}"\`);
+                      
+                      // Check for Urban Bowl dumplings
+                      if (itemName.toLowerCase().includes('urban bowl')) {
                       console.log(\`  [URBAN CHECK] Is Urban Bowl, checking for dumplings in: "\${modName}"\`);
                       console.log(\`  [URBAN CHECK] Contains 'dumpling': \${modNameLower.includes('dumpling')}\`);
                       console.log(\`  [URBAN CHECK] Contains '3 piece': \${modNameLower.includes('3 piece') || modNameLower.includes('3-piece') || modNameLower.includes('3pc')}\`);
@@ -7360,6 +7453,7 @@ function extractOrdersFromReact() {
                       additionalItems.push(modName);
                       console.log(\`Added as additional item: \${modName}\`);
                     }
+                    } // Close the modDetail check
                   }
                 });
                 
@@ -7901,9 +7995,28 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         
         // Process main items
         if (container.items) {
-          container.items.forEach(item => {
+          // Debug: Log all modifiers available
+          console.log('[ReactDataExtractor] Available modifiers in container:', container.modifiers);
+          if (container.modifiers) {
+            console.log('[ReactDataExtractor] Number of modifiers:', Object.keys(container.modifiers).length);
+            Object.entries(container.modifiers).forEach(([id, mod]) => {
+              console.log(`[ReactDataExtractor] Modifier ${id}:`, mod.orderItemDetail?.name || 'No name');
+            });
+          }
+          
+          container.items.forEach((item, idx) => {
+            console.log(`[ReactDataExtractor] Processing item ${idx + 1}:`, item.orderItemDetail?.name);
+            console.log(`[ReactDataExtractor] Item has modifierCustomerItemIds:`, item.modifierCustomerItemIds);
+            
             const parsedItem = this.parseCustomerItem(item, container.modifiers, customerOrder.stationOrders);
             if (parsedItem) {
+              console.log(`[ReactDataExtractor] Parsed item result:`, {
+                name: parsedItem.name,
+                modifiers: parsedItem.modifiers,
+                modifierDetails: parsedItem.modifierDetails,
+                sauceType: parsedItem.sauceType,
+                dumplingType: parsedItem.dumplingType
+              });
               items.push(parsedItem);
               // Mark these modifiers as processed
               if (parsedItem.modifierItemIds) {
@@ -7918,7 +8031,8 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         if (container.modifiers) {
           Object.entries(container.modifiers).forEach(([modId, modifier]) => {
             if (!processedModifierIds.has(modId)) {
-              const modName = modifier.orderItemDetail?.name || '';
+              const modDetail = modifier.orderItemDetail || modifier.data?.orderItemDetail;
+              const modName = modDetail?.name || '';
               
               // If this is NOT a size modifier and wasn't processed with an item
               if (!this.isSizeName(modName)) {
@@ -7953,10 +8067,10 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 
                 items.push({
                   name: modName,
-                  quantity: modifier.orderItemDetail?.quantity || 1,
+                  quantity: modDetail?.quantity || 1,
                   size: itemSize,
                   category: 'Other',
-                  price: this.extractPriceFromMonetary(modifier.orderItemDetail?.salePrice),
+                  price: this.extractPriceFromMonetary(modDetail?.salePrice),
                   isStandaloneModifier: true,
                   isUpsellItem: isUpsellItem
                 });
@@ -8073,8 +8187,9 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         console.log(`[ReactDataExtractor] Item ${parsedItem.name} has ${item.modifierCustomerItemIds.length} modifiers`);
         item.modifierCustomerItemIds.forEach(modId => {
           const modifier = allModifiers[modId];
-          if (modifier && modifier.orderItemDetail) {
-            const modName = modifier.orderItemDetail.name || '';
+          const modDetail = modifier?.orderItemDetail || modifier?.data?.orderItemDetail;
+          if (modifier && modDetail) {
+            const modName = modDetail.name || '';
             const modNameLower = modName.toLowerCase();
             console.log(`[ReactDataExtractor] Processing modifier: ${modName} for item ${parsedItem.name}`);
             
@@ -8108,7 +8223,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               console.log(`[ReactDataExtractor] Applied size modifier: ${modName} to item ${parsedItem.name}`);
               
               // Add to the item price if the size modifier has a price
-              const modPrice = this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice);
+              const modPrice = this.extractPriceFromMonetary(modDetail.salePrice);
               if (modPrice > 0) {
                 parsedItem.price += modPrice;
               }
@@ -8226,11 +8341,12 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       if (item.modifierCustomerItemIds && allModifiers) {
         item.modifierCustomerItemIds.forEach(modId => {
           const modifier = allModifiers[modId];
-          if (modifier && modifier.orderItemDetail) {
+          const modDetail = modifier?.orderItemDetail || modifier?.data?.orderItemDetail;
+          if (modifier && modDetail) {
             parsedItem.modifierList.push({
               id: modId,
-              name: modifier.orderItemDetail.name || '',
-              price: this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice),
+              name: modDetail.name || '',
+              price: this.extractPriceFromMonetary(modDetail.salePrice),
               integrated: parsedItem.modifierItemIds.includes(modId)
             });
           }
