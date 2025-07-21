@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.3
+// @version      5.2.4
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
@@ -12603,6 +12603,18 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 order.items = order.items.map(item => {
                   console.log(`[Overlay] Processing item: ${item.name}, size: ${item.size}, existing category: ${item.category}`);
                   
+                  // Debug Urban Bowl items
+                  if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl')) {
+                    console.log(`[Overlay] Urban Bowl item properties:`, {
+                      name: item.name,
+                      isUrbanBowl: item.isUrbanBowl,
+                      dumplingType: item.dumplingType,
+                      riceSubType: item.riceSubType,
+                      modifierDetails: item.modifierDetails,
+                      modifiers: item.modifiers
+                    });
+                  }
+                  
                   // Enhanced debug for rice bowls
                   if (item.name && item.name.toLowerCase().includes('rice bowl')) {
                     console.log(`[RICE BOWL FLOW] At overlay processing:`);
@@ -12625,7 +12637,13 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                     return {
                       ...item,
                       category: categoryInfo.topCategory,
-                      categoryInfo: categoryInfo // Add full category info
+                      categoryInfo: categoryInfo, // Add full category info
+                      // Explicitly preserve top-level properties
+                      dumplingType: item.dumplingType || null,
+                      riceSubType: item.riceSubType || null,
+                      sauceType: item.sauceType || null,
+                      isUrbanBowl: item.isUrbanBowl || false,
+                      isRiceBowl: item.isRiceBowl || false
                     };
                   } catch (error) {
                     console.error(`[Overlay] Error categorizing item ${item.name}:`, error);
@@ -12643,7 +12661,13 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                         proteinCategory: 'other',
                         sizeName: 'Other',
                         proteinName: 'Other'
-                      }
+                      },
+                      // Explicitly preserve top-level properties
+                      dumplingType: item.dumplingType || null,
+                      riceSubType: item.riceSubType || null,
+                      sauceType: item.sauceType || null,
+                      isUrbanBowl: item.isUrbanBowl || false,
+                      isRiceBowl: item.isRiceBowl || false
                     };
                   }
                 });
