@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.3.0-debug
+// @version      5.3.1
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
@@ -19,7 +19,7 @@
 // @grant        GM_notification
 // @grant        window.close
 // @grant        window.focus
-// @run-at       document-idle
+// @run-at       document-end
 // @connect      localhost
 // @connect      tryotter.com
 // @connect      *.tryotter.com
@@ -27,6 +27,17 @@
 
 (function() {
   'use strict';
+  
+  // Global error handler
+  window.addEventListener('error', function(event) {
+    console.error('[Otter Consolidator] Global error:', event.error);
+    console.error('Stack:', event.error?.stack);
+  });
+  
+  try {
+    console.log('[Otter Consolidator] Script starting v5.3.1');
+    console.log('[Otter Consolidator] URL:', window.location.href);
+    console.log('[Otter Consolidator] Document ready state:', document.readyState);
   
   // Add Eruda mobile console for tablet debugging
   (function () { 
@@ -130,6 +141,8 @@
     };
     document.body.appendChild(debugBtn);
   }, 3000);
+  
+  console.log('[Otter Consolidator] Creating loading indicator...');
   
   // Show immediate visual feedback
   const loadingIndicator = document.createElement('div');
@@ -15518,5 +15531,35 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
     }).observe(document, { subtree: true, childList: true });
   })();
 
+  } catch (error) {
+    console.error('[Otter Consolidator] Critical error in script:', error);
+    console.error('Stack:', error.stack);
+    
+    // Show error notification
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #ff4444;
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 2147483647;
+      font-family: Arial, sans-serif;
+      max-width: 80%;
+      text-align: center;
+    `;
+    errorDiv.innerHTML = `
+      <h3>Otter Consolidator Error</h3>
+      <p>${error.message}</p>
+      <p style="font-size: 12px;">Check console for details (F12)</p>
+    `;
+    if (document.body) {
+      document.body.appendChild(errorDiv);
+      setTimeout(() => errorDiv.remove(), 10000);
+    }
+  }
   
 })();
