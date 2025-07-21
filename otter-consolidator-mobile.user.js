@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.6-debug
+// @version      5.2.7-debug
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
@@ -7240,16 +7240,31 @@ function extractOrdersFromReact() {
                 console.log(\`Detected Urban Bowl: \${itemName} - set size to 'urban'\`);
               }
               
-              // Look for size in modifiers
+              // Look for modifiers
               console.log(\`Item has modifierCustomerItemIds: \${!!item.modifierCustomerItemIds}, count: \${item.modifierCustomerItemIds ? item.modifierCustomerItemIds.length : 0}\`);
-              if (item.modifierCustomerItemIds && size !== 'urban') {
+              if (item.modifierCustomerItemIds) {
                 console.log(\`Checking \${item.modifierCustomerItemIds.length} modifiers for \${itemName}\`);
+                
+                // Debug: Log all modifiers for Urban Bowls
+                if (itemName.toLowerCase().includes('urban bowl')) {
+                  console.log(\`[URBAN BOWL DEBUG] All modifier IDs:\`, item.modifierCustomerItemIds);
+                }
                 
                 item.modifierCustomerItemIds.forEach(modId => {
                   const modifier = modifiersMap[modId];
                   const stationMod = stationModifiers[modId];
                   
                   console.log(\`Checking modifier ID \${modId}, found in map: \${!!modifier}\`);
+                  
+                  // Extra debug for Urban Bowls
+                  if (itemName.toLowerCase().includes('urban bowl') && modifier) {
+                    const modName = modifier.orderItemDetail?.name || '';
+                    console.log(\`[URBAN BOWL MODIFIER] Name: "\${modName}"\`);
+                    console.log(\`[URBAN BOWL MODIFIER] Full data:`, modifier);
+                    if (modName.toLowerCase().includes('dumpling')) {
+                      console.log(\`>>> DUMPLING MODIFIER FOUND: "\${modName}" <<<\`);
+                    }
+                  }
                   
                   // Check if this is an additional item based on section
                   if (stationMod && stationMod.sectionName) {
@@ -7309,8 +7324,18 @@ function extractOrdersFromReact() {
                     console.log(\`  Modifier name: "\${modName}"\`);
                     
                     // Check for Urban Bowl dumplings
+                    if (itemName.toLowerCase().includes('urban bowl')) {
+                      console.log(\`  [URBAN CHECK] Is Urban Bowl, checking for dumplings in: "\${modName}"\`);
+                      console.log(\`  [URBAN CHECK] Contains 'dumpling': \${modNameLower.includes('dumpling')}\`);
+                      console.log(\`  [URBAN CHECK] Contains '3 piece': \${modNameLower.includes('3 piece') || modNameLower.includes('3-piece') || modNameLower.includes('3pc')}\`);
+                    }
+                    
                     if (itemName.toLowerCase().includes('urban bowl') && 
-                        modNameLower.includes('dumpling')) {
+                        (modNameLower.includes('dumpling') ||
+                         modNameLower.includes('3 piece') ||
+                         modNameLower.includes('3-piece') ||
+                         modNameLower.includes('3pc'))) {
+                      console.log(\`  >>> CAPTURING URBAN BOWL DUMPLING: "\${modName}" <<<\`);
                       modifierDetails.dumplingChoice = modName;
                       modifiersList.push({ name: modName, integrated: true });
                       console.log(\`  Urban Bowl dumpling choice (no section): "\${modName}"\`);
