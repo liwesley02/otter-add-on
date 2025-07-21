@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.1.2
+// @version      5.2.1
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -7311,7 +7311,11 @@ function extractOrdersFromReact() {
                 isRiceBowl: itemName.toLowerCase().includes('rice bowl'),
                 isUrbanBowl: itemName.toLowerCase().includes('urban bowl'),
                 modifiers: modifiersList,
-                modifierDetails: modifierDetails
+                modifierDetails: modifierDetails,
+                // Add top-level properties for tags
+                dumplingType: modifierDetails.dumplingChoice || null,
+                riceSubType: modifierDetails.riceSubstitution || null,
+                sauceType: null // Will be populated for rice bowls
               });
               
               // Debug log for Urban Bowls
@@ -7368,7 +7372,11 @@ function extractOrdersFromReact() {
               isRiceBowl: itemName.toLowerCase().includes('rice bowl'),
               isUrbanBowl: itemName.toLowerCase().includes('urban bowl'),
               modifiers: modifiersList,
-              modifierDetails: modifierDetails
+              modifierDetails: modifierDetails,
+              // Add top-level properties for tags
+              dumplingType: modifierDetails.dumplingChoice || null,
+              riceSubType: modifierDetails.riceSubstitution || null,
+              sauceType: null // Will be populated for rice bowls
             });
             
             console.log(\`Item \${idx + 1}: \${itemName} (\${size}) x\${quantity}\`);
@@ -7933,7 +7941,11 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         proteinType: '', // Will be extracted from name or modifiers
         sauce: '', // Will be extracted from name or modifiers
         isRiceBowl: false,
-        isUrbanBowl: false
+        isUrbanBowl: false,
+        // Top-level properties for tags
+        dumplingType: null,
+        riceSubType: null,
+        sauceType: null
       };
       
       // Check if this is a meal item (Bao Out, Bowl of Rice Meal)
@@ -8020,12 +8032,14 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                   if (modNameLower.includes('fried rice') || modNameLower.includes('noodle')) {
                     parsedItem.modifiers.riceSubstitution = modName;
                     parsedItem.modifierDetails.riceSubstitution = modName;
+                    parsedItem.riceSubType = modName; // Set top-level property
                     console.log(`[ReactDataExtractor] Urban Bowl rice substitution: ${modName}`);
                   }
                   // Check for dumpling choice
                   else if (modNameLower.includes('dumpling')) {
                     parsedItem.modifiers.dumplingChoice = modName;
                     parsedItem.modifierDetails.dumplingChoice = modName;
+                    parsedItem.dumplingType = modName; // Set top-level property
                     console.log(`[ReactDataExtractor] Urban Bowl dumpling choice: ${modName}`);
                     console.log(`[ReactDataExtractor] Full modifiers object:`, JSON.stringify(parsedItem.modifiers));
                   }
@@ -8033,6 +8047,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 // Special handling for Rice Bowl sauce modifiers
                 else if (parsedItem.isRiceBowl && (sectionName === 'Top Steak with Our Signature Sauces' || sectionName === 'Top Salmon with Our Signature Sauces')) {
                   parsedItem.modifierDetails.sauce = modName;
+                  parsedItem.sauceType = modName; // Set top-level property
                   console.log(`[ReactDataExtractor] Rice Bowl sauce: ${modName}`);
                 }
                 // Special handling for rice substitutions on Rice Bowls - append to size
@@ -10608,9 +10623,19 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                       }
                       
                       // Check for Urban Bowl dumplings
+                      if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl')))) {
+                        console.log(`[Urban Bowl Tag Debug] Checking item:`, {
+                          name: item.name,
+                          isUrbanBowl: item.isUrbanBowl,
+                          dumplingType: item.dumplingType,
+                          riceSubType: item.riceSubType,
+                          hasModifierDetails: !!item.modifierDetails,
+                          modifierDetails: item.modifierDetails
+                        });
+                      }
                       if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
-                          item.modifierDetails && item.modifierDetails.dumplingChoice) {
-                        const dumplingChoice = item.modifierDetails.dumplingChoice.toLowerCase();
+                          item.dumplingType) {
+                        const dumplingChoice = item.dumplingType.toLowerCase();
                         let dumplingProtein = '';
                         let dumplingClass = '';
                         
@@ -11477,6 +11502,10 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               ${dumplingProtein ? `<span class="dumpling-protein-badge ${dumplingClass}">${dumplingProtein}</span>` : ''}
               ${dumplingSauce ? `<span class="dumpling-sauce-badge">${dumplingSauce}</span>` : ''}
               ${sauceName ? `<span class="sauce-badge ${sauceClass}">${sauceName}</span>` : ''}
+              ${/* Direct check for new top-level properties */ ''}
+              ${item.sauceType && !sauceName ? `<span class="sauce-badge">${window.escapeHtml(item.sauceType)}</span>` : ''}
+              ${item.dumplingType && !dumplingProtein ? `<span class="dumpling-protein-badge">3pc ${window.escapeHtml(item.dumplingType.replace(/.*dumpling.*/i, '').trim())}</span>` : ''}
+              ${item.riceSubType && !urbanBowlRiceType ? `<span class="rice-type-badge">${window.escapeHtml(item.riceSubType)}</span>` : ''}
               <span class="item-quantity">×${item.totalQuantity}</span>
             </div>
             ${item.modifiers && item.modifiers.length > 0 ? (() => {
