@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.2-debug
+// @version      5.2.2.1-debug
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
