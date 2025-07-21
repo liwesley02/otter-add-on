@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.0.8.3
+// @version      5.0.9
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -8078,7 +8078,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       
       // Special case: Dumplings in Urban Bowls should be integrated (not separate)
       // Keep them as part of the Urban Bowl with tags
-      if (sectionName === 'Choice of 3 piece Dumplings' && itemName.toLowerCase().includes('urban bowl')) {
+      if (sectionName.toLowerCase() === 'choice of 3 piece dumplings' && itemName.toLowerCase().includes('urban bowl')) {
         console.log(`[ReactDataExtractor] Dumplings in Urban Bowl will be integrated as tags: ${modifierName}`);
         return true; // Changed from false to true - integrate as modifiers
       }
@@ -10956,6 +10956,12 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               modifiersArray: item.modifiers
             });
             
+            // Add comprehensive debugging
+            console.log(`[Urban Bowl Debug] Checking all modifier sources:`);
+            console.log(`[Urban Bowl Debug] 1. modifierDetails:`, item.modifierDetails);
+            console.log(`[Urban Bowl Debug] 2. categoryInfo.modifiers:`, item.categoryInfo?.modifiers);
+            console.log(`[Urban Bowl Debug] 3. modifiers array:`, item.modifiers);
+            
             // First check modifierDetails directly (most reliable source)
             if (item.modifierDetails && item.modifierDetails.dumplingChoice) {
               const dumplingChoice = item.modifierDetails.dumplingChoice.toLowerCase();
@@ -10982,6 +10988,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 const modName = (mod.name || mod).toLowerCase();
                 
                 // Check for dumplings - looking for "Choice of 3 piece Dumplings" or variations
+                // The format is often "Choice of 3 Piece Dumplings: [Type] Dumplings"
                 if (modName.includes('dumpling') || 
                     modName.includes('choice of 3') ||
                     modName.includes('3 piece') ||
@@ -10989,15 +10996,44 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                     modName.includes('3pc') ||
                     modName.includes('three piece')) {
                   console.log(`[Urban Bowl Debug] Found dumpling modifier: ${modName}`);
-                  if (modName.includes('pork')) {
-                    dumplingProtein = '3pc Pork';
-                    dumplingClass = 'pork';
-                  } else if (modName.includes('chicken')) {
-                    dumplingProtein = '3pc Chicken';
-                    dumplingClass = 'chicken';
-                  } else if (modName.includes('vegetable') || modName.includes('veggie')) {
-                    dumplingProtein = '3pc Vegetable';
-                    dumplingClass = 'vegetable';
+                  
+                  // If we haven't found a dumpling yet, use this one
+                  if (!dumplingProtein) {
+                    // Check if it's in the format "Choice of 3 Piece Dumplings: [Type] Dumplings"
+                    if (modName.includes(':')) {
+                      const parts = modName.split(':');
+                      const dumplingType = parts[1].trim();
+                      console.log(`[Urban Bowl Debug] Parsed dumpling type from colon format: ${dumplingType}`);
+                      
+                      if (dumplingType.includes('pork')) {
+                        dumplingProtein = '3pc Pork';
+                        dumplingClass = 'pork';
+                      } else if (dumplingType.includes('chicken')) {
+                        dumplingProtein = '3pc Chicken';
+                        dumplingClass = 'chicken';
+                      } else if (dumplingType.includes('vegetable') || dumplingType.includes('veggie')) {
+                        dumplingProtein = '3pc Vegetable';
+                        dumplingClass = 'vegetable';
+                      }
+                    } else {
+                      // Fallback to checking the whole string
+                      if (modName.includes('pork')) {
+                        dumplingProtein = '3pc Pork';
+                        dumplingClass = 'pork';
+                      } else if (modName.includes('chicken')) {
+                        dumplingProtein = '3pc Chicken';
+                        dumplingClass = 'chicken';
+                      } else if (modName.includes('vegetable') || modName.includes('veggie')) {
+                        dumplingProtein = '3pc Vegetable';
+                        dumplingClass = 'vegetable';
+                      }
+                    }
+                    
+                    // If still no protein found, use generic
+                    if (!dumplingProtein) {
+                      dumplingProtein = '3pc Dumplings';
+                      dumplingClass = 'default';
+                    }
                   }
                 }
               });
@@ -11031,18 +11067,27 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               // Fallback: Check the modifiers array one more time
               if (!dumplingProtein && item.modifiers && Array.isArray(item.modifiers)) {
                 const dumplingMod = item.modifiers.find(mod => {
-                  const modName = (mod.name || mod).toLowerCase();
+                  const modName = (typeof mod === 'object' && mod.name ? mod.name : mod).toLowerCase();
                   return modName.includes('dumpling');
                 });
                 if (dumplingMod) {
-                  const modName = (dumplingMod.name || dumplingMod).toLowerCase();
-                  if (modName.includes('pork')) {
+                  const modName = (typeof dumplingMod === 'object' && dumplingMod.name ? dumplingMod.name : dumplingMod).toLowerCase();
+                  
+                  // Check if it's in the format "Choice of 3 Piece Dumplings: [Type] Dumplings"
+                  let dumplingType = modName;
+                  if (modName.includes(':')) {
+                    const parts = modName.split(':');
+                    dumplingType = parts[1].trim();
+                    console.log(`[Urban Bowl Debug] Parsed dumpling type from colon format: ${dumplingType}`);
+                  }
+                  
+                  if (dumplingType.includes('pork')) {
                     dumplingProtein = '3pc Pork';
                     dumplingClass = 'pork';
-                  } else if (modName.includes('chicken')) {
+                  } else if (dumplingType.includes('chicken')) {
                     dumplingProtein = '3pc Chicken';
                     dumplingClass = 'chicken';
-                  } else if (modName.includes('vegetable') || modName.includes('veggie')) {
+                  } else if (dumplingType.includes('vegetable') || dumplingType.includes('veggie')) {
                     dumplingProtein = '3pc Vegetable';
                     dumplingClass = 'vegetable';
                   } else {
@@ -11055,6 +11100,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             }
             
             // Check for rice substitution in Urban Bowl
+            console.log(`[Urban Bowl Debug] Checking rice substitution:`, item.modifierDetails?.riceSubstitution);
             if (item.modifierDetails?.riceSubstitution && item.modifierDetails.riceSubstitution !== 'White Rice') {
               const riceSub = item.modifierDetails.riceSubstitution.toLowerCase();
               console.log(`[Urban Bowl Debug] Found rice substitution: ${item.modifierDetails.riceSubstitution}`);
@@ -11072,15 +11118,25 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               // Fallback: check modifiers array for rice substitution
               item.modifiers.forEach(mod => {
                 const modName = (mod.name || mod).toLowerCase();
-                if (modName.includes('fried rice') || modName.includes('noodle')) {
-                  console.log(`[Urban Bowl Debug] Found rice substitution in modifiers: ${modName}`);
-                  if (modName.includes('garlic butter')) {
+                // Check for rice substitutions - can be standalone or in "Substitute Rice: [Type]" format
+                if (modName.includes('rice') || modName.includes('noodle')) {
+                  console.log(`[Urban Bowl Debug] Found potential rice substitution in modifiers: ${modName}`);
+                  
+                  // Check if it's in colon format like "Substitute Rice: Garlic Butter Fried Rice"
+                  let riceType = modName;
+                  if (modName.includes(':')) {
+                    const parts = modName.split(':');
+                    riceType = parts[1].trim();
+                    console.log(`[Urban Bowl Debug] Parsed rice type from colon format: ${riceType}`);
+                  }
+                  
+                  if (riceType.includes('garlic butter')) {
                     urbanBowlRiceType = 'Garlic Butter Rice';
                     urbanBowlRiceClass = 'garlic-butter';
-                  } else if (modName.includes('fried rice')) {
+                  } else if (riceType.includes('fried rice')) {
                     urbanBowlRiceType = 'Fried Rice';
                     urbanBowlRiceClass = 'fried-rice';
-                  } else if (modName.includes('noodle')) {
+                  } else if (riceType.includes('noodle')) {
                     urbanBowlRiceType = 'Noodles';
                     urbanBowlRiceClass = 'noodles';
                   }
