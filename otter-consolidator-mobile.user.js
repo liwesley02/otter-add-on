@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.1.0
+// @version      5.1.1
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -10465,6 +10465,160 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                         return `<span class="item-size size-badge" data-size="${window.escapeHtml(sizeClass)}">${window.escapeHtml(fullSizeText)}</span>`;
                       }
                     })() : ''}
+                    ${(() => {
+                      // Add additional badges for modifiers (sauce, rice type, dumplings)
+                      let badges = '';
+                      
+                      // Debug logging
+                      if (item.isRiceBowl || item.isUrbanBowl || (item.name && (item.name.toLowerCase().includes('rice bowl') || item.name.toLowerCase().includes('urban bowl')))) {
+                        console.log(`[Batch View] Rendering badges for item:`, {
+                          name: item.name,
+                          modifierDetails: item.modifierDetails,
+                          modifiers: item.modifiers,
+                          isRiceBowl: item.isRiceBowl,
+                          isUrbanBowl: item.isUrbanBowl
+                        });
+                      }
+                      
+                      // Check for sauce badges (Rice Bowls)
+                      if (item.modifierDetails && item.modifierDetails.sauce) {
+                        const sauceMod = item.modifierDetails.sauce.toLowerCase();
+                        let sauceName = '';
+                        let sauceClass = '';
+                        
+                        if (sauceMod.includes('orange')) {
+                          sauceName = 'Orange';
+                          sauceClass = 'orange';
+                        } else if (sauceMod.includes('chipotle aioli')) {
+                          sauceName = 'Chipotle Aioli';
+                          sauceClass = 'chipotle';
+                        } else if (sauceMod.includes('jalapeño herb') || sauceMod.includes('jalapeno herb')) {
+                          sauceName = 'Jalapeño Herb';
+                          sauceClass = 'jalapeno';
+                        } else if (sauceMod.includes('sesame aioli')) {
+                          sauceName = 'Sesame Aioli';
+                          sauceClass = 'sesame';
+                        } else if (sauceMod.includes('garlic aioli')) {
+                          sauceName = 'Garlic Aioli';
+                          sauceClass = 'garlic';
+                        } else if (sauceMod.includes('sweet sriracha')) {
+                          sauceName = 'Sweet Sriracha';
+                          sauceClass = 'sriracha';
+                        } else if (sauceMod.includes('garlic sesame fusion')) {
+                          sauceName = 'Garlic Sesame';
+                          sauceClass = 'garlic-sesame';
+                        } else {
+                          // Try to extract sauce name
+                          const withIndex = sauceMod.indexOf('with');
+                          if (withIndex !== -1) {
+                            sauceName = item.modifierDetails.sauce.substring(withIndex + 5).trim();
+                            sauceClass = 'default';
+                          } else {
+                            sauceName = 'Sauce';
+                            sauceClass = 'default';
+                          }
+                        }
+                        
+                        if (sauceName) {
+                          badges += `<span class="sauce-badge ${sauceClass}">${sauceName}</span>`;
+                        }
+                      }
+                      
+                      // Check for Urban Bowl rice substitution
+                      if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
+                          item.modifierDetails && item.modifierDetails.riceSubstitution && 
+                          item.modifierDetails.riceSubstitution !== 'White Rice') {
+                        const riceSub = item.modifierDetails.riceSubstitution.toLowerCase();
+                        let riceType = '';
+                        let riceClass = '';
+                        
+                        if (riceSub.includes('garlic butter')) {
+                          riceType = 'Garlic Butter Rice';
+                          riceClass = 'garlic-butter';
+                        } else if (riceSub.includes('fried rice')) {
+                          riceType = 'Fried Rice';
+                          riceClass = 'fried-rice';
+                        } else if (riceSub.includes('noodle')) {
+                          riceType = 'Noodles';
+                          riceClass = 'noodles';
+                        }
+                        
+                        if (riceType) {
+                          badges += `<span class="rice-type-badge ${riceClass}">${riceType}</span>`;
+                        }
+                      }
+                      
+                      // Check for Urban Bowl dumplings
+                      if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
+                          item.modifierDetails && item.modifierDetails.dumplingChoice) {
+                        const dumplingChoice = item.modifierDetails.dumplingChoice.toLowerCase();
+                        let dumplingProtein = '';
+                        let dumplingClass = '';
+                        
+                        // Handle colon format
+                        let dumplingType = dumplingChoice;
+                        if (dumplingChoice.includes(':')) {
+                          const parts = dumplingChoice.split(':');
+                          dumplingType = parts[1].trim();
+                        }
+                        
+                        if (dumplingType.includes('pork')) {
+                          dumplingProtein = '3pc Pork';
+                          dumplingClass = 'pork';
+                        } else if (dumplingType.includes('chicken')) {
+                          dumplingProtein = '3pc Chicken';
+                          dumplingClass = 'chicken';
+                        } else if (dumplingType.includes('vegetable') || dumplingType.includes('veggie')) {
+                          dumplingProtein = '3pc Vegetable';
+                          dumplingClass = 'vegetable';
+                        } else {
+                          dumplingProtein = '3pc Dumplings';
+                          dumplingClass = 'default';
+                        }
+                        
+                        if (dumplingProtein) {
+                          badges += `<span class="dumpling-protein-badge ${dumplingClass}">${dumplingProtein}</span>`;
+                        }
+                      }
+                      
+                      // Fallback: check modifiers array if modifierDetails is empty
+                      if (!badges && item.modifiers && Array.isArray(item.modifiers)) {
+                        item.modifiers.forEach(mod => {
+                          const modName = (typeof mod === 'object' && mod.name ? mod.name : mod).toLowerCase();
+                          
+                          // Check for sauce modifiers
+                          if ((modName.includes('top steak with') || modName.includes('top salmon with')) && 
+                              modName.includes('sauce') && !badges.includes('sauce-badge')) {
+                            // Extract sauce name
+                            let sauceName = '';
+                            let sauceClass = '';
+                            
+                            if (modName.includes('orange')) {
+                              sauceName = 'Orange';
+                              sauceClass = 'orange';
+                            } else if (modName.includes('chipotle aioli')) {
+                              sauceName = 'Chipotle Aioli';
+                              sauceClass = 'chipotle';
+                            } else if (modName.includes('jalapeño herb') || modName.includes('jalapeno herb')) {
+                              sauceName = 'Jalapeño Herb';
+                              sauceClass = 'jalapeno';
+                            } else if (modName.includes('sesame aioli')) {
+                              sauceName = 'Sesame Aioli';
+                              sauceClass = 'sesame';
+                            } else if (modName.includes('garlic aioli')) {
+                              sauceName = 'Garlic Aioli';
+                              sauceClass = 'garlic';
+                            }
+                            
+                            if (sauceName) {
+                              badges += `<span class="sauce-badge ${sauceClass}">${sauceName}</span>`;
+                            }
+                          }
+                        });
+                      }
+                      
+                      return badges;
+                    })()}
                     ${maxElapsedTime > 0 ? `<span class="item-wait-time ${isOverdue ? 'overdue' : ''}">${window.escapeHtml(this.formatElapsedTime(maxElapsedTime))}</span>` : ''}
                   </li>
                 `;
