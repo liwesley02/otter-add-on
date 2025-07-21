@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.0.9
+// @version      5.1.0
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -7881,6 +7881,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         price: this.extractPriceFromMonetary(itemDetail.salePrice),
         modifierItemIds: [], // Track which modifiers are processed with this item
         modifiers: {}, // Store modifier details for categorization
+        modifierDetails: {}, // Store modifier details for UI display (tags)
         modifierList: [], // Store full modifier information
         proteinType: '', // Will be extracted from name or modifiers
         sauce: '', // Will be extracted from name or modifiers
@@ -7925,6 +7926,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               const stationMods = stationOrders[0].menuReconciledItemsContainer?.modifiers;
               if (stationMods && stationMods[modId]) {
                 sectionName = stationMods[modId].sectionName || '';
+                console.log(`[ReactDataExtractor] Modifier ${modName} has section: "${sectionName}"`);
                 // Check if it's from a size choice section
                 if (sectionName.toLowerCase().includes('size choice')) {
                   isSize = true;
@@ -7958,10 +7960,11 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               // For meal items, NO modifiers are integrated - all are separate
               // Pass the section name we already retrieved to avoid duplicate lookups
               const isIntegrated = isMealItem ? false : this.shouldIntegrateModifierWithSection(parsedItem.name, modName, sectionName, modifier, stationOrders);
+              console.log(`[ReactDataExtractor] Integration check for ${modName}: section="${sectionName}", integrated=${isIntegrated}`);
               
               if (isIntegrated) {
                 // This modifier is part of the main item, not separate
-                console.log(`[ReactDataExtractor] ${modName} is integrated into ${parsedItem.name}`);
+                console.log(`[ReactDataExtractor] ${modName} is integrated into ${parsedItem.name}`, { section: sectionName });
                 parsedItem.modifierItemIds.push(modId);
                 
                 // Special handling for Urban Bowl modifiers
@@ -7969,14 +7972,21 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                   // Check for rice substitution
                   if (modNameLower.includes('fried rice') || modNameLower.includes('noodle')) {
                     parsedItem.modifiers.riceSubstitution = modName;
+                    parsedItem.modifierDetails.riceSubstitution = modName;
                     console.log(`[ReactDataExtractor] Urban Bowl rice substitution: ${modName}`);
                   }
                   // Check for dumpling choice
                   else if (modNameLower.includes('dumpling')) {
                     parsedItem.modifiers.dumplingChoice = modName;
+                    parsedItem.modifierDetails.dumplingChoice = modName;
                     console.log(`[ReactDataExtractor] Urban Bowl dumpling choice: ${modName}`);
                     console.log(`[ReactDataExtractor] Full modifiers object:`, JSON.stringify(parsedItem.modifiers));
                   }
+                }
+                // Special handling for Rice Bowl sauce modifiers
+                else if (parsedItem.isRiceBowl && (sectionName === 'Top Steak with Our Signature Sauces' || sectionName === 'Top Salmon with Our Signature Sauces')) {
+                  parsedItem.modifierDetails.sauce = modName;
+                  console.log(`[ReactDataExtractor] Rice Bowl sauce: ${modName}`);
                 }
                 // Special handling for rice substitutions on Rice Bowls - append to size
                 else if (this.isRiceSubstitution(modName, modifier, stationOrders)) {
@@ -7984,6 +7994,8 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                   const currentSize = parsedItem.size !== 'no-size' ? parsedItem.size : '';
                   // Use the full modifier name exactly as it appears
                   parsedItem.size = currentSize ? `${currentSize} - ${modName.toLowerCase()}` : modName.toLowerCase();
+                  // Also store in modifierDetails for tag display
+                  parsedItem.modifierDetails.riceSubstitution = modName;
                   console.log(`[ReactDataExtractor] Updated size with rice substitution: ${parsedItem.size}`);
                 }
               } else {
@@ -7999,6 +8011,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       // Check if this is a Rice Bowl and extract additional info
       if (parsedItem.name.toLowerCase().includes('rice bowl')) {
         parsedItem.isRiceBowl = true;
+        console.log(`[ReactDataExtractor] Detected Rice Bowl: ${parsedItem.name}`);
         
         // If size wasn't found in modifiers, try to extract from name
         if (parsedItem.size === 'no-size') {
@@ -8060,14 +8073,16 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         });
       }
       
-      // IMPORTANT: Copy dumplingChoice from modifiers to modifierDetails for Urban Bowls
-      // This ensures compatibility with the UI which checks modifierDetails.dumplingChoice
-      if (parsedItem.isUrbanBowl && parsedItem.modifiers && parsedItem.modifiers.dumplingChoice) {
-        if (!parsedItem.modifierDetails) {
-          parsedItem.modifierDetails = {};
-        }
-        parsedItem.modifierDetails.dumplingChoice = parsedItem.modifiers.dumplingChoice;
-        console.log(`[ReactDataExtractor] Copied dumplingChoice to modifierDetails: ${parsedItem.modifierDetails.dumplingChoice}`);
+      // Log final parsed item state for debugging
+      if (parsedItem.isUrbanBowl || parsedItem.isRiceBowl) {
+        console.log(`[ReactDataExtractor] Final parsed item:`, {
+          name: parsedItem.name,
+          isUrbanBowl: parsedItem.isUrbanBowl,
+          isRiceBowl: parsedItem.isRiceBowl,
+          modifierDetails: parsedItem.modifierDetails,
+          modifiers: parsedItem.modifiers,
+          modifierList: parsedItem.modifierList
+        });
       }
       
       return parsedItem;
@@ -10783,6 +10798,15 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       let html = '';
       
       items.forEach(item => {
+        // Debug logging for Rice Bowls
+        if (item.isRiceBowl || (item.name && item.name.toLowerCase().includes('rice bowl'))) {
+          console.log(`[Rice Bowl Debug] Rendering item:`, {
+            name: item.name,
+            modifierDetails: item.modifierDetails,
+            modifiers: item.modifiers,
+            categoryInfo: item.categoryInfo
+          });
+        }
         const itemKey = this.orderBatcher.itemMatcher.generateItemKey(item.name, item.size, item.category, item.riceSubstitution);
         const itemDataStr = JSON.stringify({
           name: item.name,
@@ -11149,7 +11173,47 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         // Check for sauce modifiers on steak/salmon bowls
         let sauceName = '';
         let sauceClass = '';
-        if (item.modifiers && Array.isArray(item.modifiers)) {
+        
+        // First check modifierDetails for sauce (most reliable)
+        if (item.modifierDetails && item.modifierDetails.sauce) {
+          const sauceMod = item.modifierDetails.sauce.toLowerCase();
+          console.log(`[Sauce Debug] Found sauce in modifierDetails: ${item.modifierDetails.sauce}`);
+          
+          if (sauceMod.includes('orange')) {
+            sauceName = 'Orange';
+            sauceClass = 'orange';
+          } else if (sauceMod.includes('chipotle aioli')) {
+            sauceName = 'Chipotle Aioli';
+            sauceClass = 'chipotle';
+          } else if (sauceMod.includes('jalapeño herb') || sauceMod.includes('jalapeno herb')) {
+            sauceName = 'Jalapeño Herb';
+            sauceClass = 'jalapeno';
+          } else if (sauceMod.includes('sesame aioli')) {
+            sauceName = 'Sesame Aioli';
+            sauceClass = 'sesame';
+          } else if (sauceMod.includes('garlic aioli')) {
+            sauceName = 'Garlic Aioli';
+            sauceClass = 'garlic';
+          } else if (sauceMod.includes('sweet sriracha')) {
+            sauceName = 'Sweet Sriracha';
+            sauceClass = 'sriracha';
+          } else if (sauceMod.includes('garlic sesame fusion')) {
+            sauceName = 'Garlic Sesame';
+            sauceClass = 'garlic-sesame';
+          } else {
+            // Try to extract sauce name after "with"
+            const withIndex = sauceMod.indexOf('with');
+            if (withIndex !== -1) {
+              sauceName = item.modifierDetails.sauce.substring(withIndex + 5).trim();
+              sauceClass = 'default';
+            } else {
+              sauceName = 'Sauce';
+              sauceClass = 'default';
+            }
+          }
+        }
+        // Fallback to checking modifiers array
+        else if (item.modifiers && Array.isArray(item.modifiers)) {
           item.modifiers.forEach(mod => {
             const modName = (mod.name || mod).toLowerCase();
             
@@ -11202,16 +11266,58 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               ${sauceName ? `<span class="sauce-badge ${sauceClass}">${sauceName}</span>` : ''}
               <span class="item-quantity">×${item.totalQuantity}</span>
             </div>
-            ${item.modifiers && item.modifiers.length > 0 ? `
-              <div class="item-modifiers">
-                ${item.modifiers.map(mod => `
-                  <div class="modifier-item">
-                    <span class="modifier-name">• ${mod.name}</span>
-                    ${mod.price > 0 ? `<span class="modifier-price">+${mod.price.toFixed(2)}</span>` : ''}
-                  </div>
-                `).join('')}
-              </div>
-            ` : ''}
+            ${item.modifiers && item.modifiers.length > 0 ? (() => {
+              // Filter out integrated modifiers that are already shown as tags
+              const nonIntegratedModifiers = item.modifiers.filter(mod => {
+                const modName = (typeof mod === 'object' && mod.name ? mod.name : mod).toLowerCase();
+                
+                // Skip modifiers that are shown as tags
+                // For Rice Bowls: skip sauce modifiers and rice substitutions
+                if (item.isRiceBowl || (item.name && item.name.toLowerCase().includes('rice bowl'))) {
+                  // Skip sauces that are already shown as badges
+                  if ((modName.includes('top steak with') || modName.includes('top salmon with')) && 
+                      modName.includes('sauce')) {
+                    return false;
+                  }
+                  // Skip rice substitutions that are part of the size
+                  if (modName.includes('garlic butter fried rice') || 
+                      modName.includes('stir fry rice noodles')) {
+                    return false;
+                  }
+                }
+                
+                // For Urban Bowls: skip dumplings and rice substitutions
+                if (item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) {
+                  // Skip dumplings
+                  if (modName.includes('dumpling') || modName.includes('choice of 3')) {
+                    return false;
+                  }
+                  // Skip rice substitutions
+                  if (modName.includes('rice') || modName.includes('noodle')) {
+                    return false;
+                  }
+                }
+                
+                // Check if modifier is marked as integrated
+                if (typeof mod === 'object' && mod.integrated === true) {
+                  return false;
+                }
+                
+                return true;
+              });
+              
+              // Only show modifiers section if there are non-integrated modifiers
+              return nonIntegratedModifiers.length > 0 ? `
+                <div class="item-modifiers">
+                  ${nonIntegratedModifiers.map(mod => `
+                    <div class="modifier-item">
+                      <span class="modifier-name">• ${typeof mod === 'object' && mod.name ? mod.name : mod}</span>
+                      ${typeof mod === 'object' && mod.price > 0 ? `<span class="modifier-price">+${mod.price.toFixed(2)}</span>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              ` : '';
+            })() : ''}
             ${item.note ? `
               <div class="item-note">
                 <span class="note-label">Note:</span>
