@@ -7348,7 +7348,7 @@ function extractOrdersFromReact() {
               // Debug log for Urban Bowls
               if (itemName.toLowerCase().includes('urban bowl')) {
                 console.log(\`[PageContext] Urban Bowl item pushed with modifierDetails:\`, modifierDetails);
-                console.log(\`[PageContext] Urban Bowl top-level properties:`, {
+                console.log(\`[PageContext] Urban Bowl top-level properties:\`, {
                   dumplingType: modifierDetails.dumplingChoice || null,
                   riceSubType: modifierDetails.riceSubstitution || null
                 });
