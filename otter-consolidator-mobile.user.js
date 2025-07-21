@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.4
+// @version      5.2.6-debug
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
@@ -27,6 +27,52 @@
 
 (function() {
   'use strict';
+  
+  // Add Eruda mobile console for tablet debugging
+  (function () { 
+    if (window.location.hostname.includes('tryotter.com')) {
+      const script = document.createElement('script'); 
+      script.src = "https://cdn.jsdelivr.net/npm/eruda"; 
+      document.body.appendChild(script); 
+      script.onload = function () { 
+        eruda.init();
+        // Configure Eruda to show console by default
+        eruda.show();
+        eruda.get('console').show();
+        console.log('[DEBUG] Eruda mobile console initialized for tablet debugging');
+        
+        // Add custom debug button for Urban Bowl issues
+        setTimeout(() => {
+          const debugBtn = document.createElement('button');
+          debugBtn.innerHTML = '🍜 Debug Bowls';
+          debugBtn.style.cssText = 'position: fixed; bottom: 60px; right: 20px; z-index: 100000; padding: 10px; background: #ff6b6b; color: white; border: none; border-radius: 5px; font-size: 14px;';
+          debugBtn.onclick = function() {
+            console.log('=== URBAN BOWL DEBUG SUMMARY ===');
+            if (window.batchManager && window.batchManager.batches) {
+              window.batchManager.batches.forEach((batch, idx) => {
+                console.log(`\nBatch ${idx + 1}:`);
+                batch.items.forEach((item, key) => {
+                  if (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl') || 
+                      item.isRiceBowl || item.name.toLowerCase().includes('rice bowl')) {
+                    console.log(`\n${item.name}:`);
+                    console.log('- modifierDetails:', item.modifierDetails);
+                    console.log('- dumplingType:', item.dumplingType);
+                    console.log('- riceSubType:', item.riceSubType);
+                    console.log('- sauceType:', item.sauceType);
+                    console.log('- modifiers array:', item.modifiers);
+                    console.log('- Full item:', item);
+                  }
+                });
+              });
+            } else {
+              console.log('No batch manager found yet');
+            }
+          };
+          document.body.appendChild(debugBtn);
+        }, 2000);
+      } 
+    }
+  })();
   
   // Show immediate visual feedback
   const loadingIndicator = document.createElement('div');
@@ -10663,8 +10709,19 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                           riceSubType: item.riceSubType,
                           hasModifierDetails: !!item.modifierDetails,
                           modifierDetails: item.modifierDetails,
+                          modifiersArray: item.modifiers,
+                          modifiersIsArray: Array.isArray(item.modifiers),
+                          modifiersLength: item.modifiers ? item.modifiers.length : 0,
                           allItemProperties: Object.keys(item)
                         });
+                        
+                        // Log each modifier if they exist
+                        if (item.modifiers && Array.isArray(item.modifiers)) {
+                          console.log(`[Urban Bowl Tag Debug] Modifiers array contents:`);
+                          item.modifiers.forEach((mod, idx) => {
+                            console.log(`  [${idx}]:`, mod);
+                          });
+                        }
                       }
                       if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
                           item.dumplingType) {
@@ -11307,9 +11364,11 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             console.log(`[Urban Bowl Debug] 3. modifiers array:`, item.modifiers);
             
             // First check modifierDetails directly (most reliable source)
-            if (item.modifierDetails && item.modifierDetails.dumplingChoice) {
-              const dumplingChoice = item.modifierDetails.dumplingChoice.toLowerCase();
-              console.log(`[Urban Bowl Debug] Found dumplingChoice in modifierDetails:`, item.modifierDetails.dumplingChoice);
+            // ALSO check top-level dumplingType property
+            const dumplingChoiceFromDetails = item.modifierDetails?.dumplingChoice || item.dumplingType;
+            if (dumplingChoiceFromDetails) {
+              const dumplingChoice = dumplingChoiceFromDetails.toLowerCase();
+              console.log(`[Urban Bowl Debug] Found dumplingChoice:`, dumplingChoiceFromDetails, 'from:', item.modifierDetails?.dumplingChoice ? 'modifierDetails' : 'dumplingType');
               if (dumplingChoice.includes('pork')) {
                 dumplingProtein = '3pc Pork';
                 dumplingClass = 'pork';
@@ -11444,10 +11503,12 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             }
             
             // Check for rice substitution in Urban Bowl
-            console.log(`[Urban Bowl Debug] Checking rice substitution:`, item.modifierDetails?.riceSubstitution);
-            if (item.modifierDetails?.riceSubstitution && item.modifierDetails.riceSubstitution !== 'White Rice') {
-              const riceSub = item.modifierDetails.riceSubstitution.toLowerCase();
-              console.log(`[Urban Bowl Debug] Found rice substitution: ${item.modifierDetails.riceSubstitution}`);
+            // Check both modifierDetails and top-level riceSubType
+            const riceSubstitution = item.modifierDetails?.riceSubstitution || item.riceSubType;
+            console.log(`[Urban Bowl Debug] Checking rice substitution:`, riceSubstitution, 'from:', item.modifierDetails?.riceSubstitution ? 'modifierDetails' : 'riceSubType');
+            if (riceSubstitution && riceSubstitution !== 'White Rice') {
+              const riceSub = riceSubstitution.toLowerCase();
+              console.log(`[Urban Bowl Debug] Found rice substitution: ${riceSubstitution}`);
               if (riceSub.includes('garlic butter')) {
                 urbanBowlRiceType = 'Garlic Butter Rice';
                 urbanBowlRiceClass = 'garlic-butter';
