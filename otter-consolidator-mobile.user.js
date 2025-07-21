@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.2.1-debug
+// @version      5.2.3
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
@@ -10732,6 +10732,55 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                             }
                           }
                         });
+                      }
+                      
+                      // Fallback: Check top-level properties if no badges were added
+                      if (!badges) {
+                        // Check for sauce type (Rice Bowls)
+                        if (item.sauceType && (item.isRiceBowl || item.name.toLowerCase().includes('rice bowl'))) {
+                          console.log(`[Batch View] Using fallback sauceType: ${item.sauceType}`);
+                          badges += `<span class="sauce-badge default">${window.escapeHtml(item.sauceType)}</span>`;
+                        }
+                        
+                        // Check for rice substitution (Urban Bowls)
+                        if (item.riceSubType && item.riceSubType !== 'White Rice' && 
+                            (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl'))) {
+                          console.log(`[Batch View] Using fallback riceSubType: ${item.riceSubType}`);
+                          const riceSubLower = item.riceSubType.toLowerCase();
+                          let riceClass = 'substitute';
+                          if (riceSubLower.includes('garlic butter')) {
+                            riceClass = 'garlic-butter';
+                          } else if (riceSubLower.includes('fried rice')) {
+                            riceClass = 'fried-rice';
+                          } else if (riceSubLower.includes('noodle')) {
+                            riceClass = 'noodles';
+                          }
+                          badges += `<span class="rice-type-badge ${riceClass}">${window.escapeHtml(item.riceSubType)}</span>`;
+                        }
+                        
+                        // Check for dumpling type (Urban Bowls)
+                        if (item.dumplingType && (item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl'))) {
+                          console.log(`[Batch View] Using fallback dumplingType: ${item.dumplingType}`);
+                          const dumplingLower = item.dumplingType.toLowerCase();
+                          let dumplingClass = 'default';
+                          let dumplingText = item.dumplingType;
+                          
+                          if (dumplingLower.includes('pork')) {
+                            dumplingClass = 'pork';
+                            dumplingText = '3pc Pork';
+                          } else if (dumplingLower.includes('chicken')) {
+                            dumplingClass = 'chicken';
+                            dumplingText = '3pc Chicken';
+                          } else if (dumplingLower.includes('vegetable')) {
+                            dumplingClass = 'vegetable';
+                            dumplingText = '3pc Vegetable';
+                          } else {
+                            // Clean up the text
+                            dumplingText = '3pc ' + item.dumplingType.replace(/.*dumpling.*/i, '').trim();
+                          }
+                          
+                          badges += `<span class="dumpling-protein-badge ${dumplingClass}">${window.escapeHtml(dumplingText)}</span>`;
+                        }
                       }
                       
                       return badges;
