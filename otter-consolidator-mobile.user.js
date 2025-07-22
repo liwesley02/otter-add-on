@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.6.7
+// @version      5.2.2.1-debug
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// Urban Bowl dumplings are correctly extracted in pageContextExtractor
+// DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -4009,14 +4009,6 @@ body {
           console.log(`[OrderBatcher] Urban Bowl with dumplings, key name: ${itemNameForKey}`);
         }
         
-        // For Rice Bowls, include sauce choice in the key to separate by sauce type
-        if ((item.isRiceBowl || item.name.toLowerCase().includes('rice bowl')) && 
-            item.modifierDetails?.sauce) {
-          // Append sauce choice to the name for key generation
-          itemNameForKey = `${itemNameForKey} - ${item.modifierDetails.sauce}`;
-          console.log(`[OrderBatcher] Rice Bowl with sauce, key name: ${itemNameForKey}`);
-        }
-        
         // Generate key with size, category, base name, and rice substitution
         const key = this.itemMatcher.generateItemKey(
           itemNameForKey, 
@@ -4040,7 +4032,7 @@ body {
           }
           
           this.batches.set(key, {
-            name: itemNameForKey, // Use the name with dumpling type included
+            name: item.baseName || item.name,
             fullName: item.name, // Full name with modifiers
             originalName: item.name,
             size: item.size || 'no-size',
@@ -4052,12 +4044,10 @@ body {
             isUrbanBowl: item.isUrbanBowl || false,
             isRiceBowl: item.isRiceBowl || false,
             riceSubstitution: item.riceSubstitution || null,
-            // Add top-level properties - CRITICAL FOR BADGE DISPLAY
-            dumplingChoice: item.modifierDetails?.dumplingChoice || item.dumplingChoice || null,
-            dumplingType: item.modifierDetails?.dumplingChoice || item.dumplingType || null,
+            // Add top-level properties
+            dumplingType: item.dumplingType || null,
             riceSubType: item.riceSubType || null,
             sauceType: item.sauceType || null,
-            sauce: item.modifierDetails?.sauce || item.sauce || null,
             orders: [],
             totalQuantity: 0
           });
@@ -4097,17 +4087,6 @@ body {
   
     getBatchedItems() {
       const batchedArray = Array.from(this.batches.values());
-      
-      // Debug Urban Bowl items
-      const urbanBowls = batchedArray.filter(item => item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl'));
-      if (urbanBowls.length > 0) {
-        console.log('[OrderBatcher.getBatchedItems] Urban Bowl items:', urbanBowls.map(item => ({
-          name: item.name,
-          modifierDetails: item.modifierDetails,
-          dumplingChoice: item.dumplingChoice,
-          dumplingType: item.dumplingType
-        })));
-      }
       
       return batchedArray.sort((a, b) => {
         if (a.category !== b.category) {
@@ -5123,34 +5102,7 @@ body {
         
         // Process items for the batch
         order.items.forEach(item => {
-          // CRITICAL: Generate the same key that OrderBatcher uses
-          // For Urban Bowls, include dumpling choice in the key
-          let itemNameForKey = item.baseName || item.name;
-          if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
-              (item.modifierDetails?.dumplingChoice || item.dumplingChoice || item.dumplingType)) {
-            const dumplingChoice = item.modifierDetails?.dumplingChoice || item.dumplingChoice || item.dumplingType;
-            itemNameForKey = `${itemNameForKey} - ${dumplingChoice}`;
-          }
-          
-          // For Rice Bowls, include sauce choice in the key  
-          if ((item.isRiceBowl || (item.name && item.name.toLowerCase().includes('rice bowl'))) && 
-              (item.modifierDetails?.sauce || item.sauce || item.sauceType)) {
-            const sauce = item.modifierDetails?.sauce || item.sauce || item.sauceType;
-            itemNameForKey = `${itemNameForKey} - ${sauce}`;
-          }
-          
-          // Use itemMatcher if available, otherwise fallback to simple key
-          let key;
-          if (window.ItemMatcher && window.ItemMatcher.prototype.generateItemKey) {
-            const matcher = new window.ItemMatcher();
-            key = matcher.generateItemKey(itemNameForKey, item.size, item.category, item.riceSubstitution);
-          } else {
-            // Fallback key generation
-            key = `${item.size || 'no-size'}|${item.category || 'other'}|${itemNameForKey.toLowerCase()}`;
-            if (item.riceSubstitution && item.riceSubstitution !== 'White Rice') {
-              key += `|${item.riceSubstitution}`;
-            }
-          }
+          const key = `${item.size}|${item.category}|${item.baseName || item.name}`;
           
           if (!batch.items.has(key)) {
             if (window.logger) {
@@ -5413,12 +5365,10 @@ body {
           // Explicitly preserve these properties
           modifierDetails: item.modifierDetails || {},
           modifiers: item.modifiers || [],
-          // Preserve top-level properties for tags - CRITICAL FOR BADGES
-          dumplingChoice: item.dumplingChoice || null,
+          // Preserve top-level properties for tags
           dumplingType: item.dumplingType || null,
           riceSubType: item.riceSubType || null,
           sauceType: item.sauceType || null,
-          sauce: item.sauce || null,
           isRiceBowl: item.isRiceBowl || false,
           isUrbanBowl: item.isUrbanBowl || false
         };
@@ -7260,7 +7210,7 @@ function extractOrdersFromReact() {
                     const sectionName = stationMod.sectionName.toLowerCase();
                     const modName = stationMod.stationItemDetail ? 
                       stationMod.stationItemDetail.name : 
-                      (modifier && (modifier.orderItemDetail || modifier.data?.orderItemDetail) ? (modifier.orderItemDetail || modifier.data?.orderItemDetail).name : '');
+                      (modifier && modifier.orderItemDetail ? modifier.orderItemDetail.name : '');
                     
                     console.log(\`  Station modifier section: \${stationMod.sectionName}, item: \${modName}\`);
                     
@@ -7275,8 +7225,7 @@ function extractOrdersFromReact() {
                       // This is a dumpling choice for Urban Bowl
                       modifierDetails.dumplingChoice = modName;
                       modifiersList.push({ name: modName, integrated: true });
-                      console.log(\`[URBAN BOWL EXTRACTION] Dumpling found via section: "\${modName}"\`);
-                      console.log(\`[URBAN BOWL EXTRACTION] modifierDetails now:\`, modifierDetails);
+                      console.log(\`  Urban Bowl dumpling choice detected: "\${modName}"\`);
                     }
                     // Check if this should be a separate item
                     else if (sectionName.includes('add') || 
@@ -7308,9 +7257,8 @@ function extractOrdersFromReact() {
                         }
                       }
                     }
-                  } else if (modifier && (modifier.orderItemDetail || modifier.data?.orderItemDetail)) {
-                    const modDetail = modifier.orderItemDetail || modifier.data?.orderItemDetail;
-                    const modName = modDetail.name || '';
+                  } else if (modifier && modifier.orderItemDetail) {
+                    const modName = modifier.orderItemDetail.name || '';
                     const modNameLower = modName.toLowerCase();
                     console.log(\`  Modifier name: "\${modName}"\`);
                     
@@ -7319,8 +7267,7 @@ function extractOrdersFromReact() {
                         modNameLower.includes('dumpling')) {
                       modifierDetails.dumplingChoice = modName;
                       modifiersList.push({ name: modName, integrated: true });
-                      console.log(\`[URBAN BOWL EXTRACTION] Dumpling found via modifier: "\${modName}"\`);
-                      console.log(\`[URBAN BOWL EXTRACTION] modifierDetails now:\`, modifierDetails);
+                      console.log(\`  Urban Bowl dumpling choice (no section): "\${modName}"\`);
                     }
                     // Check for Urban Bowl rice substitution
                     else if (itemName.toLowerCase().includes('urban bowl') && 
@@ -7400,13 +7347,10 @@ function extractOrdersFromReact() {
               
               // Debug log for Urban Bowls
               if (itemName.toLowerCase().includes('urban bowl')) {
-                console.log(\`[URBAN BOWL FINAL] Item being pushed:\`, {
-                  name: itemName,
-                  modifierDetails: modifierDetails,
-                  dumplingChoice: modifierDetails.dumplingChoice,
+                console.log(\`[PageContext] Urban Bowl item pushed with modifierDetails:\`, modifierDetails);
+                console.log(\`[PageContext] Urban Bowl top-level properties:\`, {
                   dumplingType: modifierDetails.dumplingChoice || null,
-                  riceSubType: modifierDetails.riceSubstitution || null,
-                  modifiers: modifiersList
+                  riceSubType: modifierDetails.riceSubstitution || null
                 });
               }
               
@@ -7903,8 +7847,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         if (container.modifiers) {
           Object.entries(container.modifiers).forEach(([modId, modifier]) => {
             if (!processedModifierIds.has(modId)) {
-              const modDetail = modifier.orderItemDetail || modifier.data?.orderItemDetail;
-              const modName = modDetail?.name || '';
+              const modName = modifier.orderItemDetail?.name || '';
               
               // If this is NOT a size modifier and wasn't processed with an item
               if (!this.isSizeName(modName)) {
@@ -7939,10 +7882,10 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 
                 items.push({
                   name: modName,
-                  quantity: modDetail?.quantity || 1,
+                  quantity: modifier.orderItemDetail?.quantity || 1,
                   size: itemSize,
                   category: 'Other',
-                  price: this.extractPriceFromMonetary(modDetail?.salePrice),
+                  price: this.extractPriceFromMonetary(modifier.orderItemDetail?.salePrice),
                   isStandaloneModifier: true,
                   isUpsellItem: isUpsellItem
                 });
@@ -8059,9 +8002,8 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         console.log(`[ReactDataExtractor] Item ${parsedItem.name} has ${item.modifierCustomerItemIds.length} modifiers`);
         item.modifierCustomerItemIds.forEach(modId => {
           const modifier = allModifiers[modId];
-          if (modifier && (modifier.orderItemDetail || modifier.data?.orderItemDetail)) {
-            const modDetail = modifier.orderItemDetail || modifier.data?.orderItemDetail;
-            const modName = modDetail.name || '';
+          if (modifier && modifier.orderItemDetail) {
+            const modName = modifier.orderItemDetail.name || '';
             const modNameLower = modName.toLowerCase();
             console.log(`[ReactDataExtractor] Processing modifier: ${modName} for item ${parsedItem.name}`);
             
@@ -8095,7 +8037,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               console.log(`[ReactDataExtractor] Applied size modifier: ${modName} to item ${parsedItem.name}`);
               
               // Add to the item price if the size modifier has a price
-              const modPrice = this.extractPriceFromMonetary(modDetail.salePrice);
+              const modPrice = this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice);
               if (modPrice > 0) {
                 parsedItem.price += modPrice;
               }
@@ -8213,12 +8155,11 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       if (item.modifierCustomerItemIds && allModifiers) {
         item.modifierCustomerItemIds.forEach(modId => {
           const modifier = allModifiers[modId];
-          if (modifier && (modifier.orderItemDetail || modifier.data?.orderItemDetail)) {
-            const modDetail = modifier.orderItemDetail || modifier.data?.orderItemDetail;
+          if (modifier && modifier.orderItemDetail) {
             parsedItem.modifierList.push({
               id: modId,
-              name: modDetail.name || '',
-              price: this.extractPriceFromMonetary(modDetail.salePrice),
+              name: modifier.orderItemDetail.name || '',
+              price: this.extractPriceFromMonetary(modifier.orderItemDetail.salePrice),
               integrated: parsedItem.modifierItemIds.includes(modId)
             });
           }
@@ -10281,144 +10222,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       
     }
     
-    organizeBatchItemsBySize(batch, enrichedItems) {
-      console.log('[Overlay] organizeBatchItemsBySize called with:', {
-        batchItemsCount: batch.items.size,
-        enrichedItemsCount: enrichedItems.length,
-        enrichedItemsSample: enrichedItems[0]
-      });
-      
-      const sizeGroups = {};
-      
-      // Create a map of enriched items for quick lookup
-      const enrichedMap = new Map();
-      enrichedItems.forEach(item => {
-        // Get base name without dumpling/sauce modifiers
-        let baseName = item.name || '';
-        
-        // Create various possible keys to match batch items
-        const keys = [
-          `${item.size || 'no-size'}|${item.category || 'other'}|${baseName.toLowerCase()}`,
-          `${item.size || 'no-size'}|${item.category || 'other'}|${item.originalName?.toLowerCase() || baseName.toLowerCase()}`,
-          `${item.size || 'no-size'}|other|${baseName.toLowerCase()}`
-        ];
-        
-        // For Urban Bowls with dumpling choice, add keys with the dumpling
-        if ((item.isUrbanBowl || baseName.toLowerCase().includes('urban bowl')) && 
-            (item.dumplingChoice || item.dumplingType || item.modifierDetails?.dumplingChoice)) {
-          const dumplingChoice = item.dumplingChoice || item.dumplingType || item.modifierDetails?.dumplingChoice;
-          
-          // Add with dash format (what batchManager uses)
-          const nameWithDumplingDash = `${baseName} - ${dumplingChoice}`;
-          keys.push(
-            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithDumplingDash.toLowerCase()}`,
-            `${item.size || 'no-size'}|other|${nameWithDumplingDash.toLowerCase()}`
-          );
-          
-          // Also add with parentheses format (in case)
-          const nameWithDumpling = `${baseName} (${dumplingChoice})`;
-          keys.push(
-            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithDumpling.toLowerCase()}`,
-            `${item.size || 'no-size'}|other|${nameWithDumpling.toLowerCase()}`
-          );
-        }
-        
-        // For Rice Bowls with sauce, add keys with the sauce
-        if ((item.isRiceBowl || baseName.toLowerCase().includes('rice bowl')) && 
-            (item.sauce || item.sauceType || item.modifierDetails?.sauce)) {
-          const sauce = item.sauce || item.sauceType || item.modifierDetails?.sauce;
-          
-          // Add with dash format
-          const nameWithSauceDash = `${baseName} - ${sauce}`;
-          keys.push(
-            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithSauceDash.toLowerCase()}`,
-            `${item.size || 'no-size'}|other|${nameWithSauceDash.toLowerCase()}`
-          );
-          
-          // Also add with parentheses format
-          const nameWithSauce = `${baseName} (${sauce})`;
-          keys.push(
-            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithSauce.toLowerCase()}`,
-            `${item.size || 'no-size'}|other|${nameWithSauce.toLowerCase()}`
-          );
-        }
-        
-        // Debug logging for Urban Bowls
-        if (baseName.toLowerCase().includes('urban bowl')) {
-          console.log('[organizeBatchItemsBySize] Enriched Urban Bowl item:', {
-            name: item.name,
-            keys: keys,
-            modifierDetails: item.modifierDetails,
-            dumplingChoice: item.dumplingChoice,
-            dumplingType: item.dumplingType
-          });
-        }
-        
-        keys.forEach(key => enrichedMap.set(key, item));
-      });
-      
-      // Process batch items and merge with enriched data (like desktop)
-      batch.items.forEach((batchItem, key) => {
-        // Debug logging for Urban Bowls in batch
-        if (batchItem.name && batchItem.name.toLowerCase().includes('urban bowl')) {
-          console.log('[organizeBatchItemsBySize] Batch Urban Bowl item:', {
-            key: key,
-            name: batchItem.name,
-            modifierDetails: batchItem.modifierDetails,
-            dumplingChoice: batchItem.dumplingChoice,
-            dumplingType: batchItem.dumplingType
-          });
-        }
-        
-        // Find the enriched item with various key formats
-        const enrichedItem = enrichedMap.get(key) || 
-                             enrichedMap.get(key.replace(/\s*-\s*[^|]+$/, '')) || // Try without dash suffix
-                             enrichedMap.get(key.replace(/\s*\([^)]+\)$/, '')) || // Try without parentheses
-                             batchItem;
-        
-        // Merge batch data with enriched data
-        const mergedItem = {
-          ...batchItem,
-          ...enrichedItem,
-          // Preserve batch-specific data
-          orderIds: batchItem.orderIds,
-          totalQuantity: batchItem.totalQuantity,
-          batchQuantity: batchItem.batchQuantity,
-          key: key,
-          // Explicitly preserve dumpling/sauce data from enriched item
-          modifierDetails: {...(batchItem.modifierDetails || {}), ...(enrichedItem.modifierDetails || {})},
-          dumplingChoice: enrichedItem.dumplingChoice || batchItem.dumplingChoice,
-          dumplingType: enrichedItem.dumplingType || batchItem.dumplingType,
-          sauce: enrichedItem.sauce || batchItem.sauce
-        };
-        
-        // Debug log for Urban Bowls
-        if (mergedItem.name && mergedItem.name.toLowerCase().includes('urban bowl')) {
-          console.log('[Overlay] Urban Bowl merged item:', {
-            name: mergedItem.name,
-            dumplingChoice: mergedItem.dumplingChoice,
-            dumplingType: mergedItem.dumplingType,
-            modifierDetails: mergedItem.modifierDetails,
-            categoryInfo: mergedItem.categoryInfo,
-            hasEnrichedData: enrichedItem !== batchItem
-          });
-        }
-        
-        // Group by category
-        const groupKey = mergedItem.categoryInfo?.topCategory || mergedItem.category || 'other';
-        const displayName = mergedItem.categoryInfo?.topCategoryName || 'Other';
-        const sanitizedKey = groupKey.toLowerCase().replace(/[^a-z0-9]/g, '-');
-        
-        if (!sizeGroups[sanitizedKey]) {
-          sizeGroups[sanitizedKey] = { name: displayName, items: [] };
-        }
-        
-        sizeGroups[sanitizedKey].items.push(mergedItem);
-      });
-      
-      return sizeGroups;
-    }
-
     renderBatchView() {
       const container = this.overlayElement?.querySelector('#batch-view');
       if (!container) {
@@ -10456,9 +10259,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         const ordersMap = batch.orders instanceof Map ? batch.orders : new Map(Object.entries(batch.orders || {}));
         const orderCount = ordersMap.size;
         const urgencyClass = this.batchManager.getBatchUrgency(batch);
-        // Get enriched items from orderBatcher instead of batchManager (like desktop)
-        const batchedItems = this.orderBatcher.getBatchedItems();
-        const sizeGroups = this.organizeBatchItemsBySize(batch, batchedItems);
+        const sizeGroups = this.batchManager.getBatchBySize(index);
         
         // Create order color mapping for this batch (needs to be accessible for items)
         const orderColorMap = new Map();
@@ -10726,146 +10527,11 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                   customerNames = ` title="${names.join(', ')}"`;
                 }
                 
-                // Extract dumpling badge for Urban Bowls
-                let dumplingBadgeHtml = '';
-                
-                // Debug log for Urban Bowl badges
-                if (item.name && item.name.toLowerCase().includes('urban bowl')) {
-                  console.log('[BADGE RENDER] Urban Bowl item:', {
-                    name: item.name,
-                    baseName: item.baseName,
-                    hasModifierDetails: !!item.modifierDetails,
-                    modifierDetails: item.modifierDetails,
-                    dumplingChoice: item.modifierDetails?.dumplingChoice,
-                    dumplingType: item.dumplingType,
-                    dumplingChoiceTopLevel: item.dumplingChoice,
-                    mergedFromEnriched: !!item.categoryInfo,
-                    nameIncludesDumplings: item.name.includes('Dumplings')
-                  });
-                }
-                
-                // Check multiple sources for dumpling data
-                let dumplingData = null;
-                if (item.name && item.name.toLowerCase().includes('urban bowl')) {
-                  // Priority 1: modifierDetails.dumplingChoice
-                  if (item.modifierDetails?.dumplingChoice) {
-                    dumplingData = item.modifierDetails.dumplingChoice;
-                  }
-                  // Priority 2: top-level dumplingChoice
-                  else if (item.dumplingChoice) {
-                    dumplingData = item.dumplingChoice;
-                  }
-                  // Priority 3: top-level dumplingType
-                  else if (item.dumplingType) {
-                    dumplingData = item.dumplingType;
-                  }
-                  // Priority 4: parse from name
-                  else if (item.name.includes('(') && item.name.includes('Dumplings')) {
-                    const match = item.name.match(/\(([^)]+Dumplings)\)/i);
-                    if (match) {
-                      dumplingData = match[1];
-                    }
-                  }
-                  
-                  if (dumplingData) {
-                    const fullDumpling = dumplingData;
-                    const typeMatch = fullDumpling.match(/^(\w+)\s+Dumplings$/i);
-                    const dumplingType = typeMatch ? typeMatch[1] : fullDumpling;
-                    
-                    // Determine color class based on dumpling type
-                    let colorClass = '';
-                    const typeLower = dumplingType.toLowerCase();
-                    if (typeLower.includes('chicken')) {
-                      colorClass = 'chicken';
-                    } else if (typeLower.includes('pork')) {
-                      colorClass = 'pork';
-                    } else if (typeLower.includes('vegetable') || typeLower.includes('veggie')) {
-                      colorClass = 'vegetable';
-                    }
-                    
-                    dumplingBadgeHtml = `<span class="dumpling-badge ${colorClass}">${window.escapeHtml(dumplingType)}</span>`;
-                  }
-                }
-                
-                // Extract sauce badge - only for Steak and Salmon bowls
-                let sauceBadgeHtml = '';
-                const itemNameLower = (item.name || '').toLowerCase();
-                
-                // Debug log for Rice Bowl badges
-                if ((itemNameLower.includes('steak') || itemNameLower.includes('salmon')) && itemNameLower.includes('rice bowl')) {
-                  console.log('[BADGE RENDER] Steak/Salmon Rice Bowl item:', {
-                    name: item.name,
-                    hasModifierDetails: !!item.modifierDetails,
-                    modifierDetails: item.modifierDetails,
-                    sauce: item.modifierDetails?.sauce,
-                    mergedFromEnriched: !!item.categoryInfo
-                  });
-                }
-                
-                if ((itemNameLower.includes('steak') || itemNameLower.includes('salmon')) && 
-                    itemNameLower.includes('rice bowl') && 
-                    item.modifierDetails?.sauce) {
-                  // Remove "- Gluten Free" from sauce name
-                  let sauceName = item.modifierDetails.sauce;
-                  sauceName = sauceName.replace(/\s*-\s*Gluten\s*Free/gi, '').trim();
-                  sauceBadgeHtml = `<span class="sauce-badge">${window.escapeHtml(sauceName)}</span>`;
-                }
-                
-                // Extract rice substitute for Urban Bowls
-                let riceSubBadgeHtml = '';
-                if (itemNameLower.includes('urban bowl')) {
-                  // Check multiple possible locations for rice substitute data
-                  let riceType = null;
-                  
-                  // Check direct property
-                  if (item.riceSubstitution) {
-                    riceType = item.riceSubstitution;
-                  }
-                  // Check modifierDetails
-                  else if (item.modifierDetails?.riceSubstitution) {
-                    riceType = item.modifierDetails.riceSubstitution;
-                  }
-                  // Check modifiers array
-                  else if (item.modifiers && Array.isArray(item.modifiers)) {
-                    const riceModifier = item.modifiers.find(mod => {
-                      const modName = (mod.name || mod).toLowerCase();
-                      return modName.includes('fried rice') || modName.includes('noodle');
-                    });
-                    if (riceModifier) {
-                      riceType = riceModifier.name || riceModifier;
-                    }
-                  }
-                  
-                  if (riceType) {
-                    // Simplify the display
-                    if (riceType.toLowerCase().includes('garlic butter') && riceType.toLowerCase().includes('fried rice')) {
-                      riceType = 'Fried Rice';
-                    } else if (riceType.toLowerCase().includes('fried rice')) {
-                      riceType = 'Fried Rice';
-                    } else if (riceType.toLowerCase().includes('noodle')) {
-                      riceType = 'Noodles';
-                    }
-                    riceSubBadgeHtml = `<span class="rice-type-badge fried-rice">${window.escapeHtml(riceType)}</span>`;
-                  }
-                }
-                
-                // Collect all badges
-                const badges = [];
-                if (dumplingBadgeHtml) badges.push(dumplingBadgeHtml);
-                if (sauceBadgeHtml) badges.push(sauceBadgeHtml);
-                if (riceSubBadgeHtml) badges.push(riceSubBadgeHtml);
-                
-                // Create badge stack if there are badges
-                const badgeStackHtml = badges.length > 0 
-                  ? `<div class="badge-stack">${badges.join('')}</div>` 
-                  : '';
-                
                 html += `
                   <li class="${itemClass}"${customerNames}>
                     ${colorDotsHtml}
                     <span class="wave-item-quantity">${window.escapeHtml(item.batchQuantity || item.totalQuantity || 0)}x</span>
-                    <span class="wave-item-name">${window.escapeHtml(item.baseName || item.name)}</span>
-                    ${badgeStackHtml}
+                    <span class="wave-item-name">${this.formatItemNameWithSauce(item.baseName || item.name, item)}</span>
                     ${item.size && item.size !== 'no-size' && item.size !== 'urban' ? (() => {
                       // Extract the actual size from compound values like "small - Garlic Butter Fried Rice Substitute"
                       const fullSizeText = item.size;
@@ -10904,6 +10570,172 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                         return `<span class="item-size size-badge" data-size="${window.escapeHtml(sizeClass)}">${window.escapeHtml(fullSizeText)}</span>`;
                       }
                     })() : ''}
+                    ${(() => {
+                      // Add additional badges for modifiers (sauce, rice type, dumplings)
+                      let badges = '';
+                      
+                      // Debug logging
+                      if (item.isRiceBowl || item.isUrbanBowl || (item.name && (item.name.toLowerCase().includes('rice bowl') || item.name.toLowerCase().includes('urban bowl')))) {
+                        console.log(`[Batch View] Rendering badges for item:`, {
+                          name: item.name,
+                          modifierDetails: item.modifierDetails,
+                          modifiers: item.modifiers,
+                          isRiceBowl: item.isRiceBowl,
+                          isUrbanBowl: item.isUrbanBowl
+                        });
+                      }
+                      
+                      // Check for sauce badges (Rice Bowls)
+                      if (item.modifierDetails && item.modifierDetails.sauce) {
+                        const sauceMod = item.modifierDetails.sauce.toLowerCase();
+                        let sauceName = '';
+                        let sauceClass = '';
+                        
+                        if (sauceMod.includes('orange')) {
+                          sauceName = 'Orange';
+                          sauceClass = 'orange';
+                        } else if (sauceMod.includes('chipotle aioli')) {
+                          sauceName = 'Chipotle Aioli';
+                          sauceClass = 'chipotle';
+                        } else if (sauceMod.includes('jalapeño herb') || sauceMod.includes('jalapeno herb')) {
+                          sauceName = 'Jalapeño Herb';
+                          sauceClass = 'jalapeno';
+                        } else if (sauceMod.includes('sesame aioli')) {
+                          sauceName = 'Sesame Aioli';
+                          sauceClass = 'sesame';
+                        } else if (sauceMod.includes('garlic aioli')) {
+                          sauceName = 'Garlic Aioli';
+                          sauceClass = 'garlic';
+                        } else if (sauceMod.includes('sweet sriracha')) {
+                          sauceName = 'Sweet Sriracha';
+                          sauceClass = 'sriracha';
+                        } else if (sauceMod.includes('garlic sesame fusion')) {
+                          sauceName = 'Garlic Sesame';
+                          sauceClass = 'garlic-sesame';
+                        } else {
+                          // Try to extract sauce name
+                          const withIndex = sauceMod.indexOf('with');
+                          if (withIndex !== -1) {
+                            sauceName = item.modifierDetails.sauce.substring(withIndex + 5).trim();
+                            sauceClass = 'default';
+                          } else {
+                            sauceName = 'Sauce';
+                            sauceClass = 'default';
+                          }
+                        }
+                        
+                        if (sauceName) {
+                          badges += `<span class="sauce-badge ${sauceClass}">${sauceName}</span>`;
+                        }
+                      }
+                      
+                      // Check for Urban Bowl rice substitution
+                      if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
+                          ((item.modifierDetails && item.modifierDetails.riceSubstitution && 
+                            item.modifierDetails.riceSubstitution !== 'White Rice') ||
+                           (item.riceSubType && item.riceSubType !== 'White Rice'))) {
+                        const riceSub = (item.riceSubType || (item.modifierDetails && item.modifierDetails.riceSubstitution) || '').toLowerCase();
+                        let riceType = '';
+                        let riceClass = '';
+                        
+                        if (riceSub.includes('garlic butter')) {
+                          riceType = 'Garlic Butter Rice';
+                          riceClass = 'garlic-butter';
+                        } else if (riceSub.includes('fried rice')) {
+                          riceType = 'Fried Rice';
+                          riceClass = 'fried-rice';
+                        } else if (riceSub.includes('noodle')) {
+                          riceType = 'Noodles';
+                          riceClass = 'noodles';
+                        }
+                        
+                        if (riceType) {
+                          badges += `<span class="rice-type-badge ${riceClass}">${riceType}</span>`;
+                        }
+                      }
+                      
+                      // Check for Urban Bowl dumplings
+                      if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl')))) {
+                        console.log(`[Urban Bowl Tag Debug] Checking item:`, {
+                          name: item.name,
+                          isUrbanBowl: item.isUrbanBowl,
+                          dumplingType: item.dumplingType,
+                          riceSubType: item.riceSubType,
+                          hasModifierDetails: !!item.modifierDetails,
+                          modifierDetails: item.modifierDetails,
+                          allItemProperties: Object.keys(item)
+                        });
+                      }
+                      if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
+                          item.dumplingType) {
+                        const dumplingChoice = item.dumplingType.toLowerCase();
+                        let dumplingProtein = '';
+                        let dumplingClass = '';
+                        
+                        // Handle colon format
+                        let dumplingType = dumplingChoice;
+                        if (dumplingChoice.includes(':')) {
+                          const parts = dumplingChoice.split(':');
+                          dumplingType = parts[1].trim();
+                        }
+                        
+                        if (dumplingType.includes('pork')) {
+                          dumplingProtein = '3pc Pork';
+                          dumplingClass = 'pork';
+                        } else if (dumplingType.includes('chicken')) {
+                          dumplingProtein = '3pc Chicken';
+                          dumplingClass = 'chicken';
+                        } else if (dumplingType.includes('vegetable') || dumplingType.includes('veggie')) {
+                          dumplingProtein = '3pc Vegetable';
+                          dumplingClass = 'vegetable';
+                        } else {
+                          dumplingProtein = '3pc Dumplings';
+                          dumplingClass = 'default';
+                        }
+                        
+                        if (dumplingProtein) {
+                          badges += `<span class="dumpling-protein-badge ${dumplingClass}">${dumplingProtein}</span>`;
+                        }
+                      }
+                      
+                      // Fallback: check modifiers array if modifierDetails is empty
+                      if (!badges && item.modifiers && Array.isArray(item.modifiers)) {
+                        item.modifiers.forEach(mod => {
+                          const modName = (typeof mod === 'object' && mod.name ? mod.name : mod).toLowerCase();
+                          
+                          // Check for sauce modifiers
+                          if ((modName.includes('top steak with') || modName.includes('top salmon with')) && 
+                              modName.includes('sauce') && !badges.includes('sauce-badge')) {
+                            // Extract sauce name
+                            let sauceName = '';
+                            let sauceClass = '';
+                            
+                            if (modName.includes('orange')) {
+                              sauceName = 'Orange';
+                              sauceClass = 'orange';
+                            } else if (modName.includes('chipotle aioli')) {
+                              sauceName = 'Chipotle Aioli';
+                              sauceClass = 'chipotle';
+                            } else if (modName.includes('jalapeño herb') || modName.includes('jalapeno herb')) {
+                              sauceName = 'Jalapeño Herb';
+                              sauceClass = 'jalapeno';
+                            } else if (modName.includes('sesame aioli')) {
+                              sauceName = 'Sesame Aioli';
+                              sauceClass = 'sesame';
+                            } else if (modName.includes('garlic aioli')) {
+                              sauceName = 'Garlic Aioli';
+                              sauceClass = 'garlic';
+                            }
+                            
+                            if (sauceName) {
+                              badges += `<span class="sauce-badge ${sauceClass}">${sauceName}</span>`;
+                            }
+                          }
+                        });
+                      }
+                      
+                      return badges;
+                    })()}
                     ${maxElapsedTime > 0 ? `<span class="item-wait-time ${isOverdue ? 'overdue' : ''}">${window.escapeHtml(this.formatElapsedTime(maxElapsedTime))}</span>` : ''}
                   </li>
                 `;
@@ -11419,36 +11251,13 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               modifiersArray: item.modifiers
             });
             
-            // First check if dumpling type is in the name (e.g., "Urban Bowl - Chicken Dumplings")
-            const nameMatch = item.name.match(/\s*-\s*(\w+)\s+Dumplings/i);
-            if (nameMatch) {
-              const dumplingType = nameMatch[1].toLowerCase();
-              console.log(`[Urban Bowl Debug] Found dumpling type in name: ${dumplingType}`);
-              if (dumplingType.includes('pork')) {
-                dumplingProtein = '3pc Pork';
-                dumplingClass = 'pork';
-              } else if (dumplingType.includes('chicken')) {
-                dumplingProtein = '3pc Chicken';
-                dumplingClass = 'chicken';
-              } else if (dumplingType.includes('vegetable') || dumplingType.includes('veggie')) {
-                dumplingProtein = '3pc Vegetable';
-                dumplingClass = 'vegetable';
-              } else {
-                dumplingProtein = '3pc Dumplings';
-                dumplingClass = 'default';
-              }
-            }
+            // Add comprehensive debugging
+            console.log(`[Urban Bowl Debug] Checking all modifier sources:`);
+            console.log(`[Urban Bowl Debug] 1. modifierDetails:`, item.modifierDetails);
+            console.log(`[Urban Bowl Debug] 2. categoryInfo.modifiers:`, item.categoryInfo?.modifiers);
+            console.log(`[Urban Bowl Debug] 3. modifiers array:`, item.modifiers);
             
-            // If not found in name, check other sources
-            if (!dumplingProtein) {
-              // Add comprehensive debugging
-              console.log(`[Urban Bowl Debug] Checking all modifier sources:`);
-              console.log(`[Urban Bowl Debug] 1. modifierDetails:`, item.modifierDetails);
-              console.log(`[Urban Bowl Debug] 2. categoryInfo.modifiers:`, item.categoryInfo?.modifiers);
-              console.log(`[Urban Bowl Debug] 3. modifiers array:`, item.modifiers);
-            }
-            
-            // Then check modifierDetails directly (most reliable source)
+            // First check modifierDetails directly (most reliable source)
             if (item.modifierDetails && item.modifierDetails.dumplingChoice) {
               const dumplingChoice = item.modifierDetails.dumplingChoice.toLowerCase();
               console.log(`[Urban Bowl Debug] Found dumplingChoice in modifierDetails:`, item.modifierDetails.dumplingChoice);
@@ -11636,41 +11445,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         let sauceName = '';
         let sauceClass = '';
         
-        // First check if sauce is in the name (e.g., "Rice Bowl - Orange Sauce")
-        if (item.isRiceBowl || (item.name && item.name.toLowerCase().includes('rice bowl'))) {
-          const sauceMatch = item.name.match(/\s*-\s*(.+?)(?:\s+Sauce)?$/i);
-          if (sauceMatch) {
-            const sauce = sauceMatch[1].toLowerCase();
-            console.log(`[Rice Bowl Debug] Found sauce in name: ${sauce}`);
-            if (sauce.includes('orange')) {
-              sauceName = 'Orange';
-              sauceClass = 'orange';
-            } else if (sauce.includes('chipotle')) {
-              sauceName = 'Chipotle Aioli';
-              sauceClass = 'chipotle';
-            } else if (sauce.includes('jalapeño') || sauce.includes('jalapeno')) {
-              sauceName = 'Jalapeño Herb';
-              sauceClass = 'jalapeno';
-            } else if (sauce.includes('sweet sriracha')) {
-              sauceName = 'Sweet Sriracha';
-              sauceClass = 'sriracha';
-            } else if (sauce.includes('teriyaki')) {
-              sauceName = 'Teriyaki';
-              sauceClass = 'teriyaki';
-            } else if (sauce.includes('spicy yuzu')) {
-              sauceName = 'Spicy Yuzu';
-              sauceClass = 'yuzu';
-            } else if (sauce.includes('garlic sesame')) {
-              sauceName = 'Garlic Sesame';
-              sauceClass = 'garlic-sesame';
-            } else {
-              sauceName = sauce.charAt(0).toUpperCase() + sauce.slice(1);
-              sauceClass = 'default';
-            }
-          }
-        }
-        
-        // Then check modifierDetails for sauce (most reliable)
+        // First check modifierDetails for sauce (most reliable)
         if (item.modifierDetails && item.modifierDetails.sauce) {
           const sauceMod = item.modifierDetails.sauce.toLowerCase();
           console.log(`[Sauce Debug] Found sauce in modifierDetails: ${item.modifierDetails.sauce}`);
@@ -12797,17 +12572,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                     
                     console.log(`[Overlay] Categorized as: ${categoryInfo.displayCategory}, topCategory: ${categoryInfo.topCategory}`);
                     console.log(`[Overlay] Full categoryInfo:`, JSON.stringify(categoryInfo));
-                    
-                    // DEBUG: Check Urban Bowl items
-                    if (item.name && item.name.toLowerCase().includes('urban bowl')) {
-                      console.log('[URBAN BOWL FLOW] Item before return:', {
-                        name: item.name,
-                        modifierDetails: item.modifierDetails,
-                        dumplingChoice: item.dumplingChoice,
-                        dumplingType: item.dumplingType,
-                        hasModifierDetails: !!item.modifierDetails
-                      });
-                    }
                     
                     return {
                       ...item,
