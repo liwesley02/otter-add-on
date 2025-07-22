@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.6
+// @version      5.2.7
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.2.7: Added auto-clear toggle - completed orders can be automatically removed or shown with strikethrough
 // v5.2.6: Updated packing - click entire item to mark as packed (turns green), removed checkboxes
 // v5.2.5: Removed unused category view code for cleaner codebase
-// v5.2.4: Fixed packing checkboxes to appear in wave/batch view
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -9900,6 +9900,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       this.lastOrderIds = new Set();
       this.isMonitoringChanges = false;
       this.packedItems = new Map(); // Track packed items by unique ID
+      this.autoClearCompleted = GM_getValue('autoClearCompleted', false); // Load auto-clear preference
     }
   
     init() {
@@ -10184,6 +10185,12 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             <input type="number" id="batch-capacity" class="batch-capacity-input" 
                    value="${this.batchManager.maxBatchCapacity}" min="1" max="20">
           </div>
+          <div class="auto-clear-toggle" style="margin-left: 10px;">
+            <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #ccc;">
+              <input type="checkbox" id="auto-clear-toggle" ${this.autoClearCompleted ? 'checked' : ''}>
+              Auto-clear completed
+            </label>
+          </div>
           <div class="debug-toggle" style="margin-left: auto;">
             <label style="display: flex; align-items: center; gap: 3px; font-size: 10px;">
               <input type="checkbox" id="debug-mode-toggle" ${window.logger && window.logger.debugMode ? 'checked' : ''}>
@@ -10225,6 +10232,21 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         });
       }
       
+      
+      // Add auto-clear toggle listener
+      const autoClearToggle = footerContainer.querySelector('#auto-clear-toggle');
+      if (autoClearToggle) {
+        autoClearToggle.addEventListener('change', (e) => {
+          this.autoClearCompleted = e.target.checked;
+          GM_setValue('autoClearCompleted', this.autoClearCompleted);
+          this.showNotification(`Auto-clear completed orders ${this.autoClearCompleted ? 'enabled' : 'disabled'}`, 'info');
+          
+          // If enabling auto-clear, immediately clear any completed orders
+          if (this.autoClearCompleted) {
+            this.clearCompletedOrdersAuto();
+          }
+        });
+      }
       
       // Add debug mode toggle listener
       const debugToggle = footerContainer.querySelector('#debug-mode-toggle');
@@ -11174,6 +11196,31 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       this.render();
     }
     
+    clearCompletedOrdersAuto() {
+      // Auto-clear version that only clears orders marked as completed
+      console.log('[Overlay] Auto-clearing completed orders...');
+      let removedCount = 0;
+      
+      this.batchManager.batches.forEach(batch => {
+        const toRemove = [];
+        batch.orders.forEach((order, orderId) => {
+          if (order.completed) {
+            toRemove.push(orderId);
+          }
+        });
+        
+        toRemove.forEach(orderId => {
+          batch.orders.delete(orderId);
+          removedCount++;
+        });
+      });
+      
+      if (removedCount > 0) {
+        this.showNotification(`Auto-cleared ${removedCount} completed order${removedCount > 1 ? 's' : ''}`, 'success');
+        this.render();
+      }
+    }
+    
     clearCompletedOrders() {
       console.log('[Overlay] Clearing completed orders...');
       
@@ -11604,12 +11651,31 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       
       // Mark completed orders
       if (completedOrders.length > 0) {
-        console.log(`[OrderMonitoring] Marking ${completedOrders.length} orders as completed`);
-        completedOrders.forEach(orderId => {
-          this.batchManager.markOrderCompleted(orderId);
-        });
+        console.log(`[OrderMonitoring] Found ${completedOrders.length} completed orders`);
         
-        this.showNotification(`${completedOrders.length} order${completedOrders.length > 1 ? 's' : ''} completed`, 'success');
+        if (this.autoClearCompleted) {
+          // Auto-clear mode: remove orders immediately
+          console.log(`[OrderMonitoring] Auto-clearing ${completedOrders.length} completed orders`);
+          
+          completedOrders.forEach(orderId => {
+            // Remove from all batches
+            this.batchManager.batches.forEach(batch => {
+              if (batch.orders.has(orderId)) {
+                batch.orders.delete(orderId);
+              }
+            });
+          });
+          
+          this.showNotification(`${completedOrders.length} order${completedOrders.length > 1 ? 's' : ''} auto-cleared`, 'success');
+        } else {
+          // Manual mode: mark as completed with strikethrough
+          completedOrders.forEach(orderId => {
+            this.batchManager.markOrderCompleted(orderId);
+          });
+          
+          this.showNotification(`${completedOrders.length} order${completedOrders.length > 1 ? 's' : ''} completed`, 'success');
+        }
+        
         this.render();
       }
     }
