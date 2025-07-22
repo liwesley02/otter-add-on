@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.3.3
+// @version      5.2.8
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// v5.3.3: Fixed auto-clear not to remove all orders when page hasn't loaded
-// v5.3.2: Simplified auto-clear - rebuilds with only visible orders, prevents duplicate batches
-// v5.3.1: Fixed auto-clear to properly remove items, changed green to softer shade (#5cb85c)
+// v5.2.8: Changed green to softer shade (#5cb85c), disabled all notifications, removed auto-clear
+// v5.2.7: Added auto-clear toggle - completed orders can be automatically removed or shown with strikethrough
+// v5.2.6: Updated packing - click entire item to mark as packed (turns green), removed checkboxes
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -1916,7 +1916,7 @@ background: #2d2d2d;
 .wave-section.normal .wave-header {
 background: #1f3d29;
 color: white;
-border-bottom: 1px solid #5cb85c;
+border-bottom: 1px solid #28a745;
 }
 
 @keyframes pulse-text {
@@ -2703,7 +2703,20 @@ font-weight: 500;
 margin-left: 10px;
 }
 
-/* Adjust batch item styling for modifiers - REMOVED DUPLICATE DARK STYLING */
+/* Adjust batch item styling for modifiers */
+.batch-item {
+background: #2a2a2a;
+border-radius: 8px;
+padding: 16px;
+margin-bottom: 12px;
+display: flex;
+flex-direction: column;
+transition: all 0.2s ease;
+}
+
+.batch-item:hover {
+background: #333333;
+}
 
 .batch-item .item-info {
 display: flex;
@@ -5183,21 +5196,7 @@ body {
   
     // Time-based system doesn't allow manual adding - orders are assigned automatically
     refreshBatchAssignments(orders) {
-      // Only process orders that aren't already in batches
-      const newOrders = orders.filter(order => {
-        // Check if this order is already in any batch
-        for (const batch of this.batches) {
-          if (batch.orders.has(order.id)) {
-            return false; // Skip this order, it's already in a batch
-          }
-        }
-        return true; // This is a new order
-      });
-      
-      if (newOrders.length > 0) {
-        console.log(`[BatchManager] Processing ${newOrders.length} new orders (filtered from ${orders.length} total)`);
-        this.assignOrderToBatches(newOrders);
-      }
+      this.assignOrderToBatches(orders);
     }
     
     getCurrentBatchItemCount() {
@@ -9901,7 +9900,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       this.lastOrderIds = new Set();
       this.isMonitoringChanges = false;
       this.packedItems = new Map(); // Track packed items by unique ID
-      this.autoClearCompleted = GM_getValue('autoClearCompleted', false); // Load auto-clear preference
     }
   
     init() {
@@ -10186,12 +10184,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             <input type="number" id="batch-capacity" class="batch-capacity-input" 
                    value="${this.batchManager.maxBatchCapacity}" min="1" max="20">
           </div>
-          <div class="auto-clear-toggle" style="margin-left: 10px;">
-            <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #ccc;">
-              <input type="checkbox" id="auto-clear-toggle" ${this.autoClearCompleted ? 'checked' : ''}>
-              Auto-clear completed
-            </label>
-          </div>
           <div class="debug-toggle" style="margin-left: auto;">
             <label style="display: flex; align-items: center; gap: 3px; font-size: 10px;">
               <input type="checkbox" id="debug-mode-toggle" ${window.logger && window.logger.debugMode ? 'checked' : ''}>
@@ -10199,7 +10191,10 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             </label>
           </div>
         </div>
-        <!-- Update status removed - too annoying -->
+        <div class="update-status" id="update-status" style="display: none;">
+          <span class="update-indicator"></span>
+          <span class="update-text">Detecting changes...</span>
+        </div>
       `;
       
       footerContainer.innerHTML = html;
@@ -10231,22 +10226,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       }
       
       
-      // Add auto-clear toggle listener
-      const autoClearToggle = footerContainer.querySelector('#auto-clear-toggle');
-      if (autoClearToggle) {
-        autoClearToggle.addEventListener('change', (e) => {
-          this.autoClearCompleted = e.target.checked;
-          GM_setValue('autoClearCompleted', this.autoClearCompleted);
-          this.showNotification(`Auto-clear completed orders ${this.autoClearCompleted ? 'enabled' : 'disabled'}`, 'info');
-          
-          // If enabling auto-clear, immediately clear any completed orders
-          if (this.autoClearCompleted) {
-            this.clearCompletedOrdersAuto();
-          }
-        });
-      }
-      
-      // Add debug mode toggle listener
+// Add debug mode toggle listener
       const debugToggle = footerContainer.querySelector('#debug-mode-toggle');
       if (debugToggle) {
         debugToggle.addEventListener('change', (e) => {
@@ -11194,31 +11174,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       this.render();
     }
     
-    clearCompletedOrdersAuto() {
-      // Auto-clear version that only clears orders marked as completed
-      console.log('[Overlay] Auto-clearing completed orders...');
-      let removedCount = 0;
-      
-      this.batchManager.batches.forEach(batch => {
-        const toRemove = [];
-        batch.orders.forEach((order, orderId) => {
-          if (order.completed) {
-            toRemove.push(orderId);
-          }
-        });
-        
-        toRemove.forEach(orderId => {
-          batch.orders.delete(orderId);
-          removedCount++;
-        });
-      });
-      
-      if (removedCount > 0) {
-        this.showNotification(`Auto-cleared ${removedCount} completed order${removedCount > 1 ? 's' : ''}`, 'success');
-        this.render();
-      }
-    }
-    
     clearCompletedOrders() {
       console.log('[Overlay] Clearing completed orders...');
       
@@ -11508,7 +11463,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
     }
     
     showNotification(message, type = 'info', duration = 3000) {
-      // Notifications disabled - too annoying
+      // All notifications disabled - too annoying
       return null;
     }
     
@@ -11577,27 +11532,19 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       if (this.isExtracting) return; // Don't run if already extracting
       
       try {
+        // Instead of just checking for new orders, do a full refresh with detailed extraction
         console.log('Checking for updates...');
         
-        // Make sure we're on the orders page
-        const orderRows = document.querySelectorAll('[data-testid="order-row"]');
-        if (orderRows.length === 0) {
-          console.log('[OrderMonitoring] No order rows found - might not be on orders page');
-          return;
-        }
+        // First, check for completed orders before refreshing
+        this.checkForCompletedOrders();
         
-        // If auto-clear is enabled, just check for completed orders
-        // Don't do a full refresh which would recreate everything
-        if (this.autoClearCompleted) {
-          this.checkForCompletedOrders();
-          this.updateLiveStatus('Monitoring for new orders', 'live');
-        } else {
-          // Original behavior for manual mode
-          this.checkForCompletedOrders();
-          await this.extractAndRefreshDetailed();
-          this.updateLiveStatus('Monitoring for new orders', 'live');
-          await this.broadcastOrderData();
-        }
+        // Do a full refresh with detailed extraction to get actual sizes
+        await this.extractAndRefreshDetailed();
+        
+        this.updateLiveStatus('Monitoring for new orders', 'live');
+        
+        // Broadcast updated data to other tabs
+        await this.broadcastOrderData();
         
       } catch (error) {
         console.error('Error checking for new orders:', error);
@@ -11625,13 +11572,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       
       console.log(`[OrderMonitoring] Found ${visibleOrderIds.size} visible orders:`, Array.from(visibleOrderIds));
       
-      // If we can't find any orders in the DOM, don't clear anything
-      // This might mean we're on the wrong page or orders haven't loaded yet
-      if (visibleOrderIds.size === 0) {
-        console.log('[OrderMonitoring] No orders found in DOM - skipping completed check');
-        return;
-      }
-      
       // Check all orders in our batches
       const completedOrders = [];
       this.batchManager.batches.forEach(batch => {
@@ -11650,39 +11590,12 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       if (completedOrders.length > 0) {
         console.log(`[OrderMonitoring] Found ${completedOrders.length} completed orders`);
         
-        if (this.autoClearCompleted) {
-          // Auto-clear mode: remove orders immediately
-          console.log(`[OrderMonitoring] Auto-clearing ${completedOrders.length} completed orders`);
-          
-          // Simple approach: just refresh without the completed orders
-          const visibleOrders = this.orderBatcher.getAllOrders().filter(order => {
-            // Keep only orders that are still visible (not completed)
-            const orderNumber = order.id.split('_')[0];
-            return visibleOrderIds.has(orderNumber);
-          });
-          
-          // Clear everything and rebuild with only visible orders
-          this.orderBatcher.clearBatches();
-          this.batchManager.batches = [];
-          this.batchManager.initializeBatches();
-          
-          // Re-add only visible orders
-          visibleOrders.forEach(order => {
-            this.orderBatcher.addOrder(order);
-          });
-          
-          // Update batch assignments
-          this.batchManager.refreshBatchAssignments(visibleOrders);
-          
-          this.showNotification(`${completedOrders.length} order${completedOrders.length > 1 ? 's' : ''} auto-cleared`, 'success');
-        } else {
-          // Manual mode: mark as completed with strikethrough
-          completedOrders.forEach(orderId => {
-            this.batchManager.markOrderCompleted(orderId);
-          });
-          
-          this.showNotification(`${completedOrders.length} order${completedOrders.length > 1 ? 's' : ''} completed`, 'success');
-        }
+        // Always use manual mode: mark as completed with strikethrough
+        completedOrders.forEach(orderId => {
+          this.batchManager.markOrderCompleted(orderId);
+        });
+        
+        this.showNotification(`${completedOrders.length} order${completedOrders.length > 1 ? 's' : ''} completed`, 'success');
         
         this.render();
       }
@@ -14628,6 +14541,18 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         progress.remove();
         
         overlayUI.showNotification('No orders found. Try refreshing the page.', 'warning');
+        
+        // Show retry button
+        const retryNotification = overlayUI.showNotification(
+          'Click here to retry order detection', 
+          'info',
+          0 // Don't auto-hide
+        );
+        retryNotification.style.cursor = 'pointer';
+        retryNotification.addEventListener('click', async () => {
+          retryNotification.remove();
+          await extractAndBatchOrders(useDetailed);
+        });
         
       } catch (error) {
         console.error('Error in order extraction:', error);
