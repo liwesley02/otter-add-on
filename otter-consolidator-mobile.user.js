@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.5.6
+// @version      5.5.7
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// Fixed Urban Bowl badges by copying desktop version's exact structure
+// Fixed Urban Bowl badges by matching key generation between OrderBatcher and BatchManager
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -5112,7 +5112,34 @@ body {
         
         // Process items for the batch
         order.items.forEach(item => {
-          const key = `${item.size}|${item.category}|${item.baseName || item.name}`;
+          // CRITICAL: Generate the same key that OrderBatcher uses
+          // For Urban Bowls, include dumpling choice in the key
+          let itemNameForKey = item.baseName || item.name;
+          if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
+              (item.modifierDetails?.dumplingChoice || item.dumplingChoice || item.dumplingType)) {
+            const dumplingChoice = item.modifierDetails?.dumplingChoice || item.dumplingChoice || item.dumplingType;
+            itemNameForKey = `${itemNameForKey} - ${dumplingChoice}`;
+          }
+          
+          // For Rice Bowls, include sauce choice in the key  
+          if ((item.isRiceBowl || (item.name && item.name.toLowerCase().includes('rice bowl'))) && 
+              (item.modifierDetails?.sauce || item.sauce || item.sauceType)) {
+            const sauce = item.modifierDetails?.sauce || item.sauce || item.sauceType;
+            itemNameForKey = `${itemNameForKey} - ${sauce}`;
+          }
+          
+          // Use itemMatcher if available, otherwise fallback to simple key
+          let key;
+          if (window.ItemMatcher && window.ItemMatcher.prototype.generateItemKey) {
+            const matcher = new window.ItemMatcher();
+            key = matcher.generateItemKey(itemNameForKey, item.size, item.category, item.riceSubstitution);
+          } else {
+            // Fallback key generation
+            key = `${item.size || 'no-size'}|${item.category || 'other'}|${itemNameForKey.toLowerCase()}`;
+            if (item.riceSubstitution && item.riceSubstitution !== 'White Rice') {
+              key += `|${item.riceSubstitution}`;
+            }
+          }
           
           if (!batch.items.has(key)) {
             if (window.logger) {
