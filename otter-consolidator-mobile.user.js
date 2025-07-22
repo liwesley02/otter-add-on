@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.9
+// @version      5.3.0
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.3.0: Fixed UI initialization - removed Eruda auto-load, added debug logs button in overlay
 // v5.2.9: Added Eruda mobile console and debug log viewer for Firefox mobile debugging
 // v5.2.8: Added comprehensive debug logging for Rice Bowl sauce/size and Urban Bowl dumpling extraction
 // v5.2.7: Improved dumpling badge display logic with better pattern matching and debug logging
@@ -32,40 +33,32 @@
 (function() {
   'use strict';
   
-  // DEBUG: Mobile console for Firefox
+  // DEBUG: Store logs for mobile viewing
   window.debugLogs = [];
   const originalConsoleLog = console.log;
   console.log = function(...args) {
     originalConsoleLog.apply(console, args);
     // Store logs that contain our debug keywords
-    const logStr = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ');
-    if (logStr.includes('[ReactDataExtractor]') || 
-        logStr.includes('[Batch View]') || 
-        logStr.includes('[Dumpling Badge]') || 
-        logStr.includes('[Sauce Badge]') ||
-        logStr.includes('[Urban Bowl')) {
-      window.debugLogs.push({
-        time: new Date().toLocaleTimeString(),
-        message: logStr
-      });
-      // Keep only last 100 logs
-      if (window.debugLogs.length > 100) {
-        window.debugLogs.shift();
+    try {
+      const logStr = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ');
+      if (logStr.includes('[ReactDataExtractor]') || 
+          logStr.includes('[Batch View]') || 
+          logStr.includes('[Dumpling Badge]') || 
+          logStr.includes('[Sauce Badge]') ||
+          logStr.includes('[Urban Bowl')) {
+        window.debugLogs.push({
+          time: new Date().toLocaleTimeString(),
+          message: logStr
+        });
+        // Keep only last 100 logs
+        if (window.debugLogs.length > 100) {
+          window.debugLogs.shift();
+        }
       }
+    } catch (e) {
+      // Don't let logging errors break the script
     }
   };
-  
-  // Load Eruda console
-  (function () {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/eruda@3.0.1/eruda.min.js';
-    document.body.appendChild(script);
-    script.onload = function () {
-      eruda.init();
-      eruda.show();
-      console.log('[Otter Debug] Eruda console loaded - you can now see logs on mobile!');
-    };
-  })();
   
   // Function to show debug logs
   window.showDebugLogs = function() {
@@ -10303,7 +10296,10 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             <input type="number" id="batch-capacity" class="batch-capacity-input" 
                    value="${this.batchManager.maxBatchCapacity}" min="1" max="20">
           </div>
-          <div class="debug-toggle" style="margin-left: auto;">
+          <div class="debug-toggle" style="margin-left: auto; display: flex; gap: 10px;">
+            <button id="show-debug-logs" class="debug-logs-btn" style="padding: 5px 10px; font-size: 12px; background: #ff6b35; color: white; border: none; border-radius: 4px; cursor: pointer;">
+              📋 Logs
+            </button>
             <label style="display: flex; align-items: center; gap: 3px; font-size: 10px;">
               <input type="checkbox" id="debug-mode-toggle" ${window.logger && window.logger.debugMode ? 'checked' : ''}>
               Debug
@@ -10354,6 +10350,14 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             window.logger.setDebugMode(enabled);
             this.showNotification(`Debug mode ${enabled ? 'enabled' : 'disabled'}`, 'info');
           }
+        });
+      }
+      
+      // Add debug logs button listener
+      const debugLogsBtn = footerContainer.querySelector('#show-debug-logs');
+      if (debugLogsBtn) {
+        debugLogsBtn.addEventListener('click', () => {
+          window.showDebugLogs();
         });
       }
       
