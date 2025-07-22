@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.6.2
+// @version      5.6.2.1
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // Fixed Urban Bowl rice badge display to match desktop version
 // @author       HHG Team
