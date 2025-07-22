@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.5.5
+// @version      5.5.6
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// Fixed Urban Bowl dumpling badges and sauce badges using fallback properties
+// Fixed Urban Bowl badges by copying desktop version's exact structure
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -4052,10 +4052,12 @@ body {
             isUrbanBowl: item.isUrbanBowl || false,
             isRiceBowl: item.isRiceBowl || false,
             riceSubstitution: item.riceSubstitution || null,
-            // Add top-level properties
-            dumplingType: item.dumplingType || null,
+            // Add top-level properties - CRITICAL FOR BADGE DISPLAY
+            dumplingChoice: item.modifierDetails?.dumplingChoice || item.dumplingChoice || null,
+            dumplingType: item.modifierDetails?.dumplingChoice || item.dumplingType || null,
             riceSubType: item.riceSubType || null,
             sauceType: item.sauceType || null,
+            sauce: item.modifierDetails?.sauce || item.sauce || null,
             orders: [],
             totalQuantity: 0
           });
@@ -5373,10 +5375,12 @@ body {
           // Explicitly preserve these properties
           modifierDetails: item.modifierDetails || {},
           modifiers: item.modifiers || [],
-          // Preserve top-level properties for tags
+          // Preserve top-level properties for tags - CRITICAL FOR BADGES
+          dumplingChoice: item.dumplingChoice || null,
           dumplingType: item.dumplingType || null,
           riceSubType: item.riceSubType || null,
           sauceType: item.sauceType || null,
+          sauce: item.sauce || null,
           isRiceBowl: item.isRiceBowl || false,
           isUrbanBowl: item.isUrbanBowl || false
         };
@@ -10550,16 +10554,19 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                   // Debug logging for Urban Bowl items
                   console.log(`[Urban Bowl Badge Debug] Processing Urban Bowl in batch view:`, {
                     name: item.name,
-                    hasModifierDetails: !!item.modifierDetails,
-                    modifierDetails: item.modifierDetails,
-                    dumplingChoice: item.modifierDetails?.dumplingChoice,
+                    dumplingChoice: item.dumplingChoice,
                     dumplingType: item.dumplingType,
+                    hasModifierDetails: !!item.modifierDetails,
+                    modifierDetailsDumplingChoice: item.modifierDetails?.dumplingChoice,
                     isUrbanBowl: item.isUrbanBowl,
                     allKeys: Object.keys(item)
                   });
                   
-                  if (item.modifierDetails?.dumplingChoice) {
-                    const fullDumpling = item.modifierDetails.dumplingChoice;
+                  // Check top-level properties first (like desktop version)
+                  const dumplingChoice = item.dumplingChoice || item.dumplingType || item.modifierDetails?.dumplingChoice;
+                  
+                  if (dumplingChoice) {
+                    const fullDumpling = dumplingChoice;
                     const typeMatch = fullDumpling.match(/^(\w+)\s+Dumplings$/i);
                     const dumplingType = typeMatch ? typeMatch[1] : fullDumpling;
                     
@@ -10575,44 +10582,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                     }
                     
                     dumplingBadgeHtml = `<span class="dumpling-badge ${colorClass}">${window.escapeHtml(dumplingType)}</span>`;
-                  } else if (item.dumplingType) {
-                    // Use dumplingType as primary fallback
-                    console.log(`[Urban Bowl Badge Debug] Using dumplingType property:`, item.dumplingType);
-                    const dumplingType = item.dumplingType;
-                    
-                    // Determine color class based on dumpling type
-                    let colorClass = '';
-                    const typeLower = dumplingType.toLowerCase();
-                    if (typeLower.includes('chicken')) {
-                      colorClass = 'chicken';
-                    } else if (typeLower.includes('pork')) {
-                      colorClass = 'pork';
-                    } else if (typeLower.includes('vegetable') || typeLower.includes('veggie')) {
-                      colorClass = 'vegetable';
-                    }
-                    
-                    dumplingBadgeHtml = `<span class="dumpling-badge ${colorClass}">${window.escapeHtml(dumplingType)}</span>`;
-                  } else {
-                    // Try extracting from item name as last fallback
-                    const dumplingMatch = item.name.match(/\(([^)]+\s+Dumplings)\)/i);
-                    if (dumplingMatch) {
-                      const fullDumpling = dumplingMatch[1];
-                      const typeMatch = fullDumpling.match(/^(\w+)\s+Dumplings$/i);
-                      const dumplingType = typeMatch ? typeMatch[1] : fullDumpling;
-                      
-                      // Determine color class based on dumpling type
-                      let colorClass = '';
-                      const typeLower = dumplingType.toLowerCase();
-                      if (typeLower.includes('chicken')) {
-                        colorClass = 'chicken';
-                      } else if (typeLower.includes('pork')) {
-                        colorClass = 'pork';
-                      } else if (typeLower.includes('vegetable') || typeLower.includes('veggie')) {
-                        colorClass = 'vegetable';
-                      }
-                      
-                      dumplingBadgeHtml = `<span class="dumpling-badge ${colorClass}">${window.escapeHtml(dumplingType)}</span>`;
-                    }
                   }
                 }
                 
@@ -10621,33 +10590,21 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 const itemNameLower = (item.name || '').toLowerCase();
                 if ((itemNameLower.includes('steak') || itemNameLower.includes('salmon')) && 
                     itemNameLower.includes('rice bowl')) {
-                  let sauceName = null;
-                  
-                  if (item.modifierDetails?.sauce) {
-                    sauceName = item.modifierDetails.sauce;
-                  } else if (item.sauceType) {
-                    // Use sauceType as fallback
-                    sauceName = item.sauceType;
-                  }
+                  // Check top-level properties first (like desktop version)
+                  const sauceName = item.sauce || item.sauceType || item.modifierDetails?.sauce;
                   
                   if (sauceName) {
                     // Remove "- Gluten Free" from sauce name
-                    sauceName = sauceName.replace(/\s*-\s*Gluten\s*Free/gi, '').trim();
-                    sauceBadgeHtml = `<span class="sauce-badge">${window.escapeHtml(sauceName)}</span>`;
+                    let cleanSauceName = sauceName.replace(/\s*-\s*Gluten\s*Free/gi, '').trim();
+                    sauceBadgeHtml = `<span class="sauce-badge">${window.escapeHtml(cleanSauceName)}</span>`;
                   }
                 }
                 
                 // Extract rice substitute for Urban Bowls
                 let riceSubBadgeHtml = '';
                 if (itemNameLower.includes('urban bowl')) {
-                  let riceSubstitution = null;
-                  
-                  if (item.modifierDetails?.riceSubstitution) {
-                    riceSubstitution = item.modifierDetails.riceSubstitution;
-                  } else if (item.riceSubType && item.riceSubType !== 'White Rice') {
-                    // Use riceSubType as fallback
-                    riceSubstitution = item.riceSubType;
-                  }
+                  // Check top-level properties first (like desktop version)
+                  const riceSubstitution = item.riceSubstitution || item.riceSubType || item.modifierDetails?.riceSubstitution;
                   
                   if (riceSubstitution && riceSubstitution !== 'White Rice') {
                     let riceType = riceSubstitution;
