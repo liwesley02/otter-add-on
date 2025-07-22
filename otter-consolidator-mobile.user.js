@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.2.1-debug
+// @version      5.2.3
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
 // DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
@@ -8057,6 +8057,12 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 console.log(`[ReactDataExtractor] ${modName} is integrated into ${parsedItem.name}`, { section: sectionName });
                 parsedItem.modifierItemIds.push(modId);
                 
+                // Store ALL integrated modifiers in modifierDetails
+                // Initialize otherModifiers array if needed
+                if (!parsedItem.modifierDetails.otherModifiers) {
+                  parsedItem.modifierDetails.otherModifiers = [];
+                }
+                
                 // Special handling for Urban Bowl modifiers
                 if (isUrbanBowl) {
                   // Check for rice substitution
@@ -8074,22 +8080,72 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                     console.log(`[ReactDataExtractor] Urban Bowl dumpling choice: ${modName}`);
                     console.log(`[ReactDataExtractor] Full modifiers object:`, JSON.stringify(parsedItem.modifiers));
                   }
+                  // Check for sauces
+                  else if (modNameLower.includes('sauce') || modNameLower.includes('aioli')) {
+                    if (!parsedItem.modifierDetails.sauce) {
+                      parsedItem.modifierDetails.sauce = modName;
+                      parsedItem.sauceType = modName;
+                      console.log(`[ReactDataExtractor] Urban Bowl sauce: ${modName}`);
+                    } else {
+                      // Multiple sauces - add to otherModifiers
+                      parsedItem.modifierDetails.otherModifiers.push(modName);
+                      console.log(`[ReactDataExtractor] Urban Bowl additional sauce: ${modName}`);
+                    }
+                  }
+                  // Any other modifier
+                  else {
+                    parsedItem.modifierDetails.otherModifiers.push(modName);
+                    console.log(`[ReactDataExtractor] Urban Bowl other modifier: ${modName}`);
+                  }
                 }
-                // Special handling for Rice Bowl sauce modifiers
-                else if (parsedItem.isRiceBowl && (sectionName === 'Top Steak with Our Signature Sauces' || sectionName === 'Top Salmon with Our Signature Sauces')) {
-                  parsedItem.modifierDetails.sauce = modName;
-                  parsedItem.sauceType = modName; // Set top-level property
-                  console.log(`[ReactDataExtractor] Rice Bowl sauce: ${modName}`);
+                // Special handling for Rice Bowl modifiers
+                else if (parsedItem.isRiceBowl) {
+                  // Check for sauce modifiers
+                  if (sectionName === 'Top Steak with Our Signature Sauces' || 
+                      sectionName === 'Top Salmon with Our Signature Sauces' ||
+                      modNameLower.includes('sauce') || 
+                      modNameLower.includes('aioli')) {
+                    if (!parsedItem.modifierDetails.sauce) {
+                      parsedItem.modifierDetails.sauce = modName;
+                      parsedItem.sauceType = modName;
+                      console.log(`[ReactDataExtractor] Rice Bowl sauce: ${modName}`);
+                    } else {
+                      // Multiple sauces - add to otherModifiers
+                      parsedItem.modifierDetails.otherModifiers.push(modName);
+                      console.log(`[ReactDataExtractor] Rice Bowl additional sauce: ${modName}`);
+                    }
+                  }
+                  // Check for rice substitutions
+                  else if (this.isRiceSubstitution(modName, modifier, stationOrders)) {
+                    // Append the rice substitution to the size
+                    const currentSize = parsedItem.size !== 'no-size' ? parsedItem.size : '';
+                    // Use the full modifier name exactly as it appears
+                    parsedItem.size = currentSize ? `${currentSize} - ${modName.toLowerCase()}` : modName.toLowerCase();
+                    // Also store in modifierDetails for tag display
+                    parsedItem.modifierDetails.riceSubstitution = modName;
+                    console.log(`[ReactDataExtractor] Updated size with rice substitution: ${parsedItem.size}`);
+                  }
+                  // Any other modifier
+                  else {
+                    parsedItem.modifierDetails.otherModifiers.push(modName);
+                    console.log(`[ReactDataExtractor] Rice Bowl other modifier: ${modName}`);
+                  }
                 }
-                // Special handling for rice substitutions on Rice Bowls - append to size
-                else if (this.isRiceSubstitution(modName, modifier, stationOrders)) {
-                  // Append the rice substitution to the size
-                  const currentSize = parsedItem.size !== 'no-size' ? parsedItem.size : '';
-                  // Use the full modifier name exactly as it appears
-                  parsedItem.size = currentSize ? `${currentSize} - ${modName.toLowerCase()}` : modName.toLowerCase();
-                  // Also store in modifierDetails for tag display
-                  parsedItem.modifierDetails.riceSubstitution = modName;
-                  console.log(`[ReactDataExtractor] Updated size with rice substitution: ${parsedItem.size}`);
+                // For all other items, store all integrated modifiers
+                else {
+                  // Check for common modifier types
+                  if (modNameLower.includes('sauce') || modNameLower.includes('aioli')) {
+                    if (!parsedItem.modifierDetails.sauce) {
+                      parsedItem.modifierDetails.sauce = modName;
+                      console.log(`[ReactDataExtractor] Item sauce: ${modName}`);
+                    } else {
+                      parsedItem.modifierDetails.otherModifiers.push(modName);
+                    }
+                  } else {
+                    // Store in otherModifiers
+                    parsedItem.modifierDetails.otherModifiers.push(modName);
+                    console.log(`[ReactDataExtractor] Other item modifier: ${modName}`);
+                  }
                 }
               } else {
                 // This is an upsell modifier - DON'T mark it as processed
@@ -8257,34 +8313,61 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       const itemLower = itemName.toLowerCase();
       const modLower = modifierName.toLowerCase();
       const section = sectionName || '';
+      const sectionLower = section.toLowerCase();
+      
+      // Check section names that indicate SEPARATE items FIRST
+      const separateItemSections = [
+        'Add a Dessert',
+        'Add a Drink', 
+        'Side Addition',
+        'Add a Side',
+        'Add Dessert',
+        'Add Drink'
+      ];
+      
+      if (separateItemSections.includes(section) || 
+          sectionLower.includes('add a dessert') ||
+          sectionLower.includes('add a drink') ||
+          sectionLower.includes('side addition')) {
+        return false; // These are always separate items
+      }
+      
+      // Check if modifier name indicates it's a separate item
+      if (modLower.includes('bao-nut') || 
+          modLower.includes('cinnamon sugar') ||
+          (modLower.includes('tea') && !itemLower.includes('tea')) ||
+          (modLower.includes('drink') && !itemLower.includes('drink'))) {
+        return false; // These are separate items
+      }
       
       // These sections are ALWAYS integrated with the main item
       const integratedSections = [
         'Size Choice',
         'Size Choice - Salmon',
         'Boba Option',
-        // 'Choice of 3 piece Dumplings', // Now treated as separate items
+        'Choice of 3 piece Dumplings',
         'Choice of Dressing',
         'Choice of Protein',
         'House Sauces',
         'Substitute Rice',
-        'Top Steak with Our Signature Sauces',  // Sauce ON the steak - integrated
-        'Top Salmon with Our Signature Sauces'  // Sauce ON the salmon - integrated
+        'Top Steak with Our Signature Sauces',
+        'Top Salmon with Our Signature Sauces',
+        'Sauce Options',
+        'Sauce Choice',
+        'Add Sauce',
+        'Select Sauce',
+        'Protein Choice',
+        'Rice Substitute',
+        'Noodle Substitute'
       ];
       
-      if (integratedSections.includes(section)) {
+      if (integratedSections.includes(section) ||
+          sectionLower.includes('choice of') ||
+          sectionLower.includes('substitute') ||
+          sectionLower.includes('sauce') ||
+          sectionLower.includes('protein') ||
+          sectionLower.includes('size')) {
         return true; // These modify/complete the main item
-      }
-      
-      // Check section names that indicate SEPARATE items
-      const separateItemSections = [
-        'Add a Dessert',
-        'Add a Drink', 
-        'Side Addition'
-      ];
-      
-      if (separateItemSections.includes(section)) {
-        return false; // These are always separate items
       }
       
       // Special case: Required modifiers that create combo items
@@ -8293,8 +8376,16 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         return true;
       }
       
-      // Default: modifiers are separate items
-      return false;
+      // For items like bowls, wraps, sandwiches - modifiers that customize them are integrated
+      if (itemLower.includes('bowl') || itemLower.includes('wrap') || itemLower.includes('sandwich')) {
+        // If it's not explicitly a separate item, it's probably integrated
+        if (!modLower.includes('side') && !modLower.includes('drink') && !modLower.includes('dessert')) {
+          return true;
+        }
+      }
+      
+      // Default: if we're not sure, integrate it (better to have too much info than too little)
+      return true;
     }
     
     isDrinkItem(itemName) {
