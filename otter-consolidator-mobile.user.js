@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.8
+// @version      5.2.9
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// v5.2.8: Changed green to softer shade (#5cb85c), disabled all notifications, removed auto-clear
-// v5.2.7: Added auto-clear toggle - completed orders can be automatically removed or shown with strikethrough
+// v5.2.9: Optimized clear completed orders - now much faster, only removes completed without full rebuild
+// v5.2.8: Changed green to softer shade (#5cb85c), disabled all notifications, removed auto-clear and related code
+// v5.2.7: Completed orders shown with strikethrough only (manual mode)
 // v5.2.6: Updated packing - click entire item to mark as packed (turns green), removed checkboxes
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -915,17 +916,6 @@ color: white;
 background: #c0392b;
 }
 
-.auto-wave-toggle {
-display: flex;
-align-items: center;
-gap: 8px;
-font-size: 13px;
-cursor: pointer;
-}
-
-.auto-wave-toggle input {
-cursor: pointer;
-}
 
 .otter-current-wave {
 padding: 15px;
@@ -11177,32 +11167,15 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
     clearCompletedOrders() {
       console.log('[Overlay] Clearing completed orders...');
       
-      // Get all visible order IDs from the DOM
-      const visibleOrderIds = new Set();
-      const orderRows = document.querySelectorAll('[data-testid="order-row"]');
-      
-      orderRows.forEach(row => {
-        // Try to extract order ID
-        const orderNumElement = row.querySelector('[data-testid="order-info-subtext"]');
-        if (orderNumElement) {
-          const orderText = orderNumElement.textContent;
-          const match = orderText.match(/#([A-Z0-9]+)/);
-          if (match) {
-            visibleOrderIds.add(match[1]);
-          }
-        }
-      });
-      
-      console.log(`[Overlay] Found ${visibleOrderIds.size} visible orders on page`);
-      
-      // Remove orders that are not visible
+      // Remove only completed orders without rebuilding everything
       let removedCount = 0;
+      
+      // Remove completed orders from batchManager
       this.batchManager.batches.forEach(batch => {
         const ordersToRemove = [];
         
         batch.orders.forEach((order, orderId) => {
-          const orderNumber = orderId.split('_')[0];
-          if (!visibleOrderIds.has(orderNumber)) {
+          if (order.completed) {
             ordersToRemove.push(orderId);
           }
         });
@@ -11211,34 +11184,35 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         ordersToRemove.forEach(orderId => {
           batch.orders.delete(orderId);
           removedCount++;
-          console.log(`[Overlay] Removed order ${orderId} from batch ${batch.number}`);
+          console.log(`[Overlay] Removed completed order ${orderId} from batch ${batch.number}`);
         });
       });
       
+      // Remove completed orders from orderBatcher
       if (removedCount > 0) {
-        // Refresh the display
-        const allOrders = this.orderBatcher.getAllOrders().filter(order => {
-          const orderNumber = order.id.split('_')[0];
-          return visibleOrderIds.has(orderNumber);
+        const remainingOrders = this.orderBatcher.getAllOrders().filter(order => {
+          // Check if order is marked as completed in any batch
+          for (const batch of this.batchManager.batches) {
+            const batchOrder = batch.orders.get(order.id);
+            if (batchOrder && batchOrder.completed) {
+              return false; // Filter out completed orders
+            }
+          }
+          return true; // Keep non-completed orders
         });
         
+        // Only update the orderBatcher with remaining orders
         this.orderBatcher.clearBatches();
-        allOrders.forEach(order => this.orderBatcher.addOrder(order));
-        this.batchManager.refreshBatchAssignments(allOrders);
+        remainingOrders.forEach(order => this.orderBatcher.addOrder(order));
         
         this.showNotification(`Cleared ${removedCount} completed order${removedCount > 1 ? 's' : ''}`, 'success');
+        
+        // Just re-render, no need to refresh batch assignments
         this.render();
       } else {
         this.showNotification('No completed orders to clear', 'info');
       }
     }
-  
-    toggleAutoWave(enabled) {
-      // Auto-wave functionality has been removed since we're not sending to kitchen
-      // This method is kept for backward compatibility but does nothing
-      console.log('Auto-wave toggle called but functionality removed');
-    }
-  
   
     toggleCollapse() {
       this.isCollapsed = !this.isCollapsed;
