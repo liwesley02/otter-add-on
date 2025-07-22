@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.5.7
+// @version      5.5.9
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// Fixed Urban Bowl badges by matching key generation between OrderBatcher and BatchManager
+// Fixed Urban Bowl badges by adding proper key matching for items with modifiers
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -10270,6 +10270,128 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       
     }
     
+    organizeBatchItemsBySize(batch, enrichedItems) {
+      console.log('[Overlay] organizeBatchItemsBySize called with:', {
+        batchItemsCount: batch.items.size,
+        enrichedItemsCount: enrichedItems.length,
+        enrichedItemsSample: enrichedItems[0]
+      });
+      
+      const sizeGroups = {};
+      
+      // Create a map of enriched items for quick lookup
+      const enrichedMap = new Map();
+      enrichedItems.forEach(item => {
+        // Create various possible keys to match batch items
+        const keys = [
+          `${item.size || 'no-size'}|${item.category || 'other'}|${item.name.toLowerCase()}`,
+          `${item.size || 'no-size'}|${item.category || 'other'}|${item.originalName?.toLowerCase() || item.name.toLowerCase()}`,
+          `${item.size || 'no-size'}|other|${item.name.toLowerCase()}`
+        ];
+        
+        // For Urban Bowls with dumpling choice, add keys with the dumpling in parentheses
+        if (item.isUrbanBowl && (item.dumplingChoice || item.dumplingType || item.modifierDetails?.dumplingChoice)) {
+          const dumplingChoice = item.dumplingChoice || item.dumplingType || item.modifierDetails?.dumplingChoice;
+          const nameWithDumpling = `${item.name} (${dumplingChoice})`;
+          keys.push(
+            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithDumpling.toLowerCase()}`,
+            `${item.size || 'no-size'}|other|${nameWithDumpling.toLowerCase()}`
+          );
+          // Also add with dash format (mobile uses dash, desktop uses parentheses)
+          const nameWithDumplingDash = `${item.name} - ${dumplingChoice}`;
+          keys.push(
+            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithDumplingDash.toLowerCase()}`,
+            `${item.size || 'no-size'}|other|${nameWithDumplingDash.toLowerCase()}`
+          );
+        }
+        
+        // For Rice Bowls with sauce, add keys with the sauce
+        if (item.isRiceBowl && (item.sauce || item.sauceType || item.modifierDetails?.sauce)) {
+          const sauce = item.sauce || item.sauceType || item.modifierDetails?.sauce;
+          const nameWithSauce = `${item.name} (${sauce})`;
+          keys.push(
+            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithSauce.toLowerCase()}`,
+            `${item.size || 'no-size'}|other|${nameWithSauce.toLowerCase()}`
+          );
+          // Also add with dash format
+          const nameWithSauceDash = `${item.name} - ${sauce}`;
+          keys.push(
+            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithSauceDash.toLowerCase()}`,
+            `${item.size || 'no-size'}|other|${nameWithSauceDash.toLowerCase()}`
+          );
+        }
+        
+        // Debug logging for Urban Bowls
+        if (item.name && item.name.toLowerCase().includes('urban bowl')) {
+          console.log('[organizeBatchItemsBySize] Enriched Urban Bowl item:', {
+            name: item.name,
+            keys: keys,
+            modifierDetails: item.modifierDetails,
+            dumplingChoice: item.dumplingChoice,
+            dumplingType: item.dumplingType
+          });
+        }
+        
+        keys.forEach(key => enrichedMap.set(key, item));
+      });
+      
+      // Process batch items and merge with enriched data
+      batch.items.forEach((batchItem, key) => {
+        // Debug logging for Urban Bowls in batch
+        if (batchItem.name && batchItem.name.toLowerCase().includes('urban bowl')) {
+          console.log('[organizeBatchItemsBySize] Batch Urban Bowl item:', {
+            key: key,
+            keyWithoutParens: key.replace(/\s*\([^)]+\)$/, ''),
+            name: batchItem.name,
+            modifierDetails: batchItem.modifierDetails,
+            dumplingChoice: batchItem.dumplingChoice,
+            dumplingType: batchItem.dumplingType
+          });
+        }
+        
+        // Find the enriched item with categoryInfo
+        const enrichedItem = enrichedMap.get(key) || 
+                             enrichedMap.get(key.replace(/\s*\([^)]+\)$/, '')) || // Try without parentheses
+                             batchItem;
+        
+        // Merge batch data with enriched data
+        const mergedItem = {
+          ...batchItem,
+          ...enrichedItem,
+          // Preserve batch-specific data
+          orderIds: batchItem.orderIds,
+          totalQuantity: batchItem.totalQuantity,
+          batchQuantity: batchItem.batchQuantity,
+          key: key
+        };
+        
+        // Debug log for Urban Bowls
+        if (mergedItem.name && mergedItem.name.toLowerCase().includes('urban bowl')) {
+          console.log('[Overlay] Urban Bowl merged item:', {
+            name: mergedItem.name,
+            dumplingChoice: mergedItem.dumplingChoice,
+            dumplingType: mergedItem.dumplingType,
+            modifierDetails: mergedItem.modifierDetails,
+            categoryInfo: mergedItem.categoryInfo,
+            hasEnrichedData: enrichedItem !== batchItem
+          });
+        }
+        
+        // Group by category
+        const groupKey = mergedItem.categoryInfo?.topCategory || mergedItem.category || 'other';
+        const displayName = mergedItem.categoryInfo?.topCategoryName || 'Other';
+        const sanitizedKey = groupKey.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        
+        if (!sizeGroups[sanitizedKey]) {
+          sizeGroups[sanitizedKey] = { name: displayName, items: [] };
+        }
+        
+        sizeGroups[sanitizedKey].items.push(mergedItem);
+      });
+      
+      return sizeGroups;
+    }
+
     renderBatchView() {
       const container = this.overlayElement?.querySelector('#batch-view');
       if (!container) {
@@ -10307,7 +10429,9 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         const ordersMap = batch.orders instanceof Map ? batch.orders : new Map(Object.entries(batch.orders || {}));
         const orderCount = ordersMap.size;
         const urgencyClass = this.batchManager.getBatchUrgency(batch);
-        const sizeGroups = this.batchManager.getBatchBySize(index);
+        // Get enriched items from orderBatcher instead of batchManager (like desktop)
+        const batchedItems = this.orderBatcher.getBatchedItems();
+        const sizeGroups = this.organizeBatchItemsBySize(batch, batchedItems);
         
         // Create order color mapping for this batch (needs to be accessible for items)
         const orderColorMap = new Map();
