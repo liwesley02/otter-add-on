@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.6.5
+// @version      5.6.7
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// Fixed item name rendering to match desktop exactly
+// Urban Bowl dumplings are correctly extracted in pageContextExtractor
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -10293,47 +10293,58 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       // Create a map of enriched items for quick lookup
       const enrichedMap = new Map();
       enrichedItems.forEach(item => {
+        // Get base name without dumpling/sauce modifiers
+        let baseName = item.name || '';
+        
         // Create various possible keys to match batch items
         const keys = [
-          `${item.size || 'no-size'}|${item.category || 'other'}|${item.name.toLowerCase()}`,
-          `${item.size || 'no-size'}|${item.category || 'other'}|${item.originalName?.toLowerCase() || item.name.toLowerCase()}`,
-          `${item.size || 'no-size'}|other|${item.name.toLowerCase()}`
+          `${item.size || 'no-size'}|${item.category || 'other'}|${baseName.toLowerCase()}`,
+          `${item.size || 'no-size'}|${item.category || 'other'}|${item.originalName?.toLowerCase() || baseName.toLowerCase()}`,
+          `${item.size || 'no-size'}|other|${baseName.toLowerCase()}`
         ];
         
-        // For Urban Bowls with dumpling choice, add keys with the dumpling in parentheses
-        if (item.isUrbanBowl && (item.dumplingChoice || item.dumplingType || item.modifierDetails?.dumplingChoice)) {
+        // For Urban Bowls with dumpling choice, add keys with the dumpling
+        if ((item.isUrbanBowl || baseName.toLowerCase().includes('urban bowl')) && 
+            (item.dumplingChoice || item.dumplingType || item.modifierDetails?.dumplingChoice)) {
           const dumplingChoice = item.dumplingChoice || item.dumplingType || item.modifierDetails?.dumplingChoice;
-          const nameWithDumpling = `${item.name} (${dumplingChoice})`;
-          keys.push(
-            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithDumpling.toLowerCase()}`,
-            `${item.size || 'no-size'}|other|${nameWithDumpling.toLowerCase()}`
-          );
-          // Also add with dash format (mobile uses dash, desktop uses parentheses)
-          const nameWithDumplingDash = `${item.name} - ${dumplingChoice}`;
+          
+          // Add with dash format (what batchManager uses)
+          const nameWithDumplingDash = `${baseName} - ${dumplingChoice}`;
           keys.push(
             `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithDumplingDash.toLowerCase()}`,
             `${item.size || 'no-size'}|other|${nameWithDumplingDash.toLowerCase()}`
           );
+          
+          // Also add with parentheses format (in case)
+          const nameWithDumpling = `${baseName} (${dumplingChoice})`;
+          keys.push(
+            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithDumpling.toLowerCase()}`,
+            `${item.size || 'no-size'}|other|${nameWithDumpling.toLowerCase()}`
+          );
         }
         
         // For Rice Bowls with sauce, add keys with the sauce
-        if (item.isRiceBowl && (item.sauce || item.sauceType || item.modifierDetails?.sauce)) {
+        if ((item.isRiceBowl || baseName.toLowerCase().includes('rice bowl')) && 
+            (item.sauce || item.sauceType || item.modifierDetails?.sauce)) {
           const sauce = item.sauce || item.sauceType || item.modifierDetails?.sauce;
-          const nameWithSauce = `${item.name} (${sauce})`;
-          keys.push(
-            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithSauce.toLowerCase()}`,
-            `${item.size || 'no-size'}|other|${nameWithSauce.toLowerCase()}`
-          );
-          // Also add with dash format
-          const nameWithSauceDash = `${item.name} - ${sauce}`;
+          
+          // Add with dash format
+          const nameWithSauceDash = `${baseName} - ${sauce}`;
           keys.push(
             `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithSauceDash.toLowerCase()}`,
             `${item.size || 'no-size'}|other|${nameWithSauceDash.toLowerCase()}`
           );
+          
+          // Also add with parentheses format
+          const nameWithSauce = `${baseName} (${sauce})`;
+          keys.push(
+            `${item.size || 'no-size'}|${item.category || 'other'}|${nameWithSauce.toLowerCase()}`,
+            `${item.size || 'no-size'}|other|${nameWithSauce.toLowerCase()}`
+          );
         }
         
         // Debug logging for Urban Bowls
-        if (item.name && item.name.toLowerCase().includes('urban bowl')) {
+        if (baseName.toLowerCase().includes('urban bowl')) {
           console.log('[organizeBatchItemsBySize] Enriched Urban Bowl item:', {
             name: item.name,
             keys: keys,
@@ -10346,13 +10357,12 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         keys.forEach(key => enrichedMap.set(key, item));
       });
       
-      // Process batch items and merge with enriched data
+      // Process batch items and merge with enriched data (like desktop)
       batch.items.forEach((batchItem, key) => {
         // Debug logging for Urban Bowls in batch
         if (batchItem.name && batchItem.name.toLowerCase().includes('urban bowl')) {
           console.log('[organizeBatchItemsBySize] Batch Urban Bowl item:', {
             key: key,
-            keyWithoutParens: key.replace(/\s*\([^)]+\)$/, ''),
             name: batchItem.name,
             modifierDetails: batchItem.modifierDetails,
             dumplingChoice: batchItem.dumplingChoice,
@@ -10360,8 +10370,9 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
           });
         }
         
-        // Find the enriched item with categoryInfo
+        // Find the enriched item with various key formats
         const enrichedItem = enrichedMap.get(key) || 
+                             enrichedMap.get(key.replace(/\s*-\s*[^|]+$/, '')) || // Try without dash suffix
                              enrichedMap.get(key.replace(/\s*\([^)]+\)$/, '')) || // Try without parentheses
                              batchItem;
         
@@ -10373,7 +10384,12 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
           orderIds: batchItem.orderIds,
           totalQuantity: batchItem.totalQuantity,
           batchQuantity: batchItem.batchQuantity,
-          key: key
+          key: key,
+          // Explicitly preserve dumpling/sauce data from enriched item
+          modifierDetails: {...(batchItem.modifierDetails || {}), ...(enrichedItem.modifierDetails || {})},
+          dumplingChoice: enrichedItem.dumplingChoice || batchItem.dumplingChoice,
+          dumplingType: enrichedItem.dumplingType || batchItem.dumplingType,
+          sauce: enrichedItem.sauce || batchItem.sauce
         };
         
         // Debug log for Urban Bowls
