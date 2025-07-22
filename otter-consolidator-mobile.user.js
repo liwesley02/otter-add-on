@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.6.0
+// @version      5.6.2
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// Fixed Urban Bowl/Rice Bowl badges by using exact desktop badge rendering logic
+// Fixed Urban Bowl rice badge display to match desktop version
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -10701,6 +10701,18 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 
                 // Extract dumpling badge for Urban Bowls
                 let dumplingBadgeHtml = '';
+                
+                // Debug log for Urban Bowl badges
+                if (item.name && item.name.toLowerCase().includes('urban bowl')) {
+                  console.log('[BADGE RENDER] Urban Bowl item:', {
+                    name: item.name,
+                    hasModifierDetails: !!item.modifierDetails,
+                    modifierDetails: item.modifierDetails,
+                    dumplingChoice: item.modifierDetails?.dumplingChoice,
+                    mergedFromEnriched: !!item.categoryInfo
+                  });
+                }
+                
                 if (item.name && item.name.toLowerCase().includes('urban bowl') && item.modifierDetails?.dumplingChoice) {
                   const fullDumpling = item.modifierDetails.dumplingChoice;
                   const typeMatch = fullDumpling.match(/^(\w+)\s+Dumplings$/i);
@@ -10723,6 +10735,18 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 // Extract sauce badge - only for Steak and Salmon bowls
                 let sauceBadgeHtml = '';
                 const itemNameLower = (item.name || '').toLowerCase();
+                
+                // Debug log for Rice Bowl badges
+                if ((itemNameLower.includes('steak') || itemNameLower.includes('salmon')) && itemNameLower.includes('rice bowl')) {
+                  console.log('[BADGE RENDER] Steak/Salmon Rice Bowl item:', {
+                    name: item.name,
+                    hasModifierDetails: !!item.modifierDetails,
+                    modifierDetails: item.modifierDetails,
+                    sauce: item.modifierDetails?.sauce,
+                    mergedFromEnriched: !!item.categoryInfo
+                  });
+                }
+                
                 if ((itemNameLower.includes('steak') || itemNameLower.includes('salmon')) && 
                     itemNameLower.includes('rice bowl') && 
                     item.modifierDetails?.sauce) {
@@ -10735,14 +10759,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 // Extract rice substitute for Urban Bowls
                 let riceSubBadgeHtml = '';
                 if (itemNameLower.includes('urban bowl')) {
-                  // Debug log to see what data we have
-                  console.log('[Overlay] Urban Bowl rice sub check:', {
-                    name: item.name,
-                    riceSubstitution: item.riceSubstitution,
-                    modifiers: item.modifiers,
-                    modifierDetails: item.modifierDetails
-                  });
-                  
                   // Check multiple possible locations for rice substitute data
                   let riceType = null;
                   
@@ -10833,172 +10849,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                         return `<span class="item-size size-badge" data-size="${window.escapeHtml(sizeClass)}">${window.escapeHtml(fullSizeText)}</span>`;
                       }
                     })() : ''}
-                    ${(() => {
-                      // Add additional badges for modifiers (sauce, rice type, dumplings)
-                      let badges = '';
-                      
-                      // Debug logging
-                      if (item.isRiceBowl || item.isUrbanBowl || (item.name && (item.name.toLowerCase().includes('rice bowl') || item.name.toLowerCase().includes('urban bowl')))) {
-                        console.log(`[Batch View] Rendering badges for item:`, {
-                          name: item.name,
-                          modifierDetails: item.modifierDetails,
-                          modifiers: item.modifiers,
-                          isRiceBowl: item.isRiceBowl,
-                          isUrbanBowl: item.isUrbanBowl
-                        });
-                      }
-                      
-                      // Check for sauce badges (Rice Bowls)
-                      if (item.modifierDetails && item.modifierDetails.sauce) {
-                        const sauceMod = item.modifierDetails.sauce.toLowerCase();
-                        let sauceName = '';
-                        let sauceClass = '';
-                        
-                        if (sauceMod.includes('orange')) {
-                          sauceName = 'Orange';
-                          sauceClass = 'orange';
-                        } else if (sauceMod.includes('chipotle aioli')) {
-                          sauceName = 'Chipotle Aioli';
-                          sauceClass = 'chipotle';
-                        } else if (sauceMod.includes('jalapeño herb') || sauceMod.includes('jalapeno herb')) {
-                          sauceName = 'Jalapeño Herb';
-                          sauceClass = 'jalapeno';
-                        } else if (sauceMod.includes('sesame aioli')) {
-                          sauceName = 'Sesame Aioli';
-                          sauceClass = 'sesame';
-                        } else if (sauceMod.includes('garlic aioli')) {
-                          sauceName = 'Garlic Aioli';
-                          sauceClass = 'garlic';
-                        } else if (sauceMod.includes('sweet sriracha')) {
-                          sauceName = 'Sweet Sriracha';
-                          sauceClass = 'sriracha';
-                        } else if (sauceMod.includes('garlic sesame fusion')) {
-                          sauceName = 'Garlic Sesame';
-                          sauceClass = 'garlic-sesame';
-                        } else {
-                          // Try to extract sauce name
-                          const withIndex = sauceMod.indexOf('with');
-                          if (withIndex !== -1) {
-                            sauceName = item.modifierDetails.sauce.substring(withIndex + 5).trim();
-                            sauceClass = 'default';
-                          } else {
-                            sauceName = 'Sauce';
-                            sauceClass = 'default';
-                          }
-                        }
-                        
-                        if (sauceName) {
-                          badges += `<span class="sauce-badge ${sauceClass}">${sauceName}</span>`;
-                        }
-                      }
-                      
-                      // Check for Urban Bowl rice substitution
-                      if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
-                          ((item.modifierDetails && item.modifierDetails.riceSubstitution && 
-                            item.modifierDetails.riceSubstitution !== 'White Rice') ||
-                           (item.riceSubType && item.riceSubType !== 'White Rice'))) {
-                        const riceSub = (item.riceSubType || (item.modifierDetails && item.modifierDetails.riceSubstitution) || '').toLowerCase();
-                        let riceType = '';
-                        let riceClass = '';
-                        
-                        if (riceSub.includes('garlic butter')) {
-                          riceType = 'Garlic Butter Rice';
-                          riceClass = 'garlic-butter';
-                        } else if (riceSub.includes('fried rice')) {
-                          riceType = 'Fried Rice';
-                          riceClass = 'fried-rice';
-                        } else if (riceSub.includes('noodle')) {
-                          riceType = 'Noodles';
-                          riceClass = 'noodles';
-                        }
-                        
-                        if (riceType) {
-                          badges += `<span class="rice-type-badge ${riceClass}">${riceType}</span>`;
-                        }
-                      }
-                      
-                      // Check for Urban Bowl dumplings
-                      if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl')))) {
-                        console.log(`[Urban Bowl Tag Debug] Checking item:`, {
-                          name: item.name,
-                          isUrbanBowl: item.isUrbanBowl,
-                          dumplingType: item.dumplingType,
-                          riceSubType: item.riceSubType,
-                          hasModifierDetails: !!item.modifierDetails,
-                          modifierDetails: item.modifierDetails,
-                          allItemProperties: Object.keys(item)
-                        });
-                      }
-                      if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
-                          item.dumplingType) {
-                        const dumplingChoice = item.dumplingType.toLowerCase();
-                        let dumplingProtein = '';
-                        let dumplingClass = '';
-                        
-                        // Handle colon format
-                        let dumplingType = dumplingChoice;
-                        if (dumplingChoice.includes(':')) {
-                          const parts = dumplingChoice.split(':');
-                          dumplingType = parts[1].trim();
-                        }
-                        
-                        if (dumplingType.includes('pork')) {
-                          dumplingProtein = '3pc Pork';
-                          dumplingClass = 'pork';
-                        } else if (dumplingType.includes('chicken')) {
-                          dumplingProtein = '3pc Chicken';
-                          dumplingClass = 'chicken';
-                        } else if (dumplingType.includes('vegetable') || dumplingType.includes('veggie')) {
-                          dumplingProtein = '3pc Vegetable';
-                          dumplingClass = 'vegetable';
-                        } else {
-                          dumplingProtein = '3pc Dumplings';
-                          dumplingClass = 'default';
-                        }
-                        
-                        if (dumplingProtein) {
-                          badges += `<span class="dumpling-protein-badge ${dumplingClass}">${dumplingProtein}</span>`;
-                        }
-                      }
-                      
-                      // Fallback: check modifiers array if modifierDetails is empty
-                      if (!badges && item.modifiers && Array.isArray(item.modifiers)) {
-                        item.modifiers.forEach(mod => {
-                          const modName = (typeof mod === 'object' && mod.name ? mod.name : mod).toLowerCase();
-                          
-                          // Check for sauce modifiers
-                          if ((modName.includes('top steak with') || modName.includes('top salmon with')) && 
-                              modName.includes('sauce') && !badges.includes('sauce-badge')) {
-                            // Extract sauce name
-                            let sauceName = '';
-                            let sauceClass = '';
-                            
-                            if (modName.includes('orange')) {
-                              sauceName = 'Orange';
-                              sauceClass = 'orange';
-                            } else if (modName.includes('chipotle aioli')) {
-                              sauceName = 'Chipotle Aioli';
-                              sauceClass = 'chipotle';
-                            } else if (modName.includes('jalapeño herb') || modName.includes('jalapeno herb')) {
-                              sauceName = 'Jalapeño Herb';
-                              sauceClass = 'jalapeno';
-                            } else if (modName.includes('sesame aioli')) {
-                              sauceName = 'Sesame Aioli';
-                              sauceClass = 'sesame';
-                            } else if (modName.includes('garlic aioli')) {
-                              sauceName = 'Garlic Aioli';
-                              sauceClass = 'garlic';
-                            }
-                            
-                            if (sauceName) {
-                              badges += `<span class="sauce-badge ${sauceClass}">${sauceName}</span>`;
-                            }
-                          }
-                        });
-                      }
-                      
-                      return badges;
-                    })()}
                     ${maxElapsedTime > 0 ? `<span class="item-wait-time ${isOverdue ? 'overdue' : ''}">${window.escapeHtml(this.formatElapsedTime(maxElapsedTime))}</span>` : ''}
                   </li>
                 `;
@@ -12892,6 +12742,17 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                     
                     console.log(`[Overlay] Categorized as: ${categoryInfo.displayCategory}, topCategory: ${categoryInfo.topCategory}`);
                     console.log(`[Overlay] Full categoryInfo:`, JSON.stringify(categoryInfo));
+                    
+                    // DEBUG: Check Urban Bowl items
+                    if (item.name && item.name.toLowerCase().includes('urban bowl')) {
+                      console.log('[URBAN BOWL FLOW] Item before return:', {
+                        name: item.name,
+                        modifierDetails: item.modifierDetails,
+                        dumplingChoice: item.dumplingChoice,
+                        dumplingType: item.dumplingType,
+                        hasModifierDetails: !!item.modifierDetails
+                      });
+                    }
                     
                     return {
                       ...item,
