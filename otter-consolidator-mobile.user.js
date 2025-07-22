@@ -1,8 +1,12 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.4
+// @version      5.2.9
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.2.9: Added Eruda mobile console and debug log viewer for Firefox mobile debugging
+// v5.2.8: Added comprehensive debug logging for Rice Bowl sauce/size and Urban Bowl dumpling extraction
+// v5.2.7: Improved dumpling badge display logic with better pattern matching and debug logging
+// v5.2.6: Fixed Urban Bowl dumpling text display - replaced faulty regex that removed all text
 // DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
@@ -27,6 +31,104 @@
 
 (function() {
   'use strict';
+  
+  // DEBUG: Mobile console for Firefox
+  window.debugLogs = [];
+  const originalConsoleLog = console.log;
+  console.log = function(...args) {
+    originalConsoleLog.apply(console, args);
+    // Store logs that contain our debug keywords
+    const logStr = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ');
+    if (logStr.includes('[ReactDataExtractor]') || 
+        logStr.includes('[Batch View]') || 
+        logStr.includes('[Dumpling Badge]') || 
+        logStr.includes('[Sauce Badge]') ||
+        logStr.includes('[Urban Bowl')) {
+      window.debugLogs.push({
+        time: new Date().toLocaleTimeString(),
+        message: logStr
+      });
+      // Keep only last 100 logs
+      if (window.debugLogs.length > 100) {
+        window.debugLogs.shift();
+      }
+    }
+  };
+  
+  // Load Eruda console
+  (function () {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/eruda@3.0.1/eruda.min.js';
+    document.body.appendChild(script);
+    script.onload = function () {
+      eruda.init();
+      eruda.show();
+      console.log('[Otter Debug] Eruda console loaded - you can now see logs on mobile!');
+    };
+  })();
+  
+  // Function to show debug logs
+  window.showDebugLogs = function() {
+    const existingPanel = document.getElementById('otter-debug-panel');
+    if (existingPanel) {
+      existingPanel.remove();
+      return;
+    }
+    
+    const debugPanel = document.createElement('div');
+    debugPanel.id = 'otter-debug-panel';
+    debugPanel.style.cssText = `
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      background: rgba(0, 0, 0, 0.95);
+      color: #0f0;
+      padding: 20px;
+      overflow-y: auto;
+      z-index: 999999;
+      font-family: monospace;
+      font-size: 12px;
+      border: 2px solid #0f0;
+      border-radius: 10px;
+    `;
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✖ Close';
+    closeBtn.style.cssText = `
+      position: sticky;
+      top: 0;
+      float: right;
+      background: #f00;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-bottom: 10px;
+    `;
+    closeBtn.onclick = () => debugPanel.remove();
+    
+    const logsContainer = document.createElement('pre');
+    logsContainer.style.cssText = `
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    `;
+    
+    if (window.debugLogs && window.debugLogs.length > 0) {
+      logsContainer.textContent = window.debugLogs.map(log => 
+        `[${log.time}] ${log.message}`
+      ).join('\n\n');
+    } else {
+      logsContainer.textContent = 'No debug logs captured yet. Try consolidating orders to see logs.';
+    }
+    
+    debugPanel.appendChild(closeBtn);
+    debugPanel.appendChild(logsContainer);
+    document.body.appendChild(debugPanel);
+  };
   
   // Show immediate visual feedback
   const loadingIndicator = document.createElement('div');
@@ -8050,7 +8152,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               // For meal items, NO modifiers are integrated - all are separate
               // Pass the section name we already retrieved to avoid duplicate lookups
               const isIntegrated = isMealItem ? false : this.shouldIntegrateModifierWithSection(parsedItem.name, modName, sectionName, modifier, stationOrders);
-              console.log(`[ReactDataExtractor] Integration check for ${modName}: section="${sectionName}", integrated=${isIntegrated}`);
+              console.log(`[ReactDataExtractor] Integration check for ${modName}: section="${sectionName}", integrated=${isIntegrated}, itemName="${parsedItem.name}", isUrbanBowl=${isUrbanBowl}, isRiceBowl=${parsedItem.isRiceBowl}`);
               
               if (isIntegrated) {
                 // This modifier is part of the main item, not separate
@@ -8073,13 +8175,15 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                     parsedItem.dumplingType = modName; // Set top-level property
                     console.log(`[ReactDataExtractor] Urban Bowl dumpling choice: ${modName}`);
                     console.log(`[ReactDataExtractor] Full modifiers object:`, JSON.stringify(parsedItem.modifiers));
+                    console.log(`[ReactDataExtractor] Set dumplingType to: "${parsedItem.dumplingType}"`);
                   }
                 }
                 // Special handling for Rice Bowl sauce modifiers
                 else if (parsedItem.isRiceBowl && (sectionName === 'Top Steak with Our Signature Sauces' || sectionName === 'Top Salmon with Our Signature Sauces')) {
                   parsedItem.modifierDetails.sauce = modName;
                   parsedItem.sauceType = modName; // Set top-level property
-                  console.log(`[ReactDataExtractor] Rice Bowl sauce: ${modName}`);
+                  console.log(`[ReactDataExtractor] Rice Bowl sauce: ${modName} for ${parsedItem.name}`);
+                  console.log(`[ReactDataExtractor] Sauce stored in modifierDetails:`, parsedItem.modifierDetails);
                 }
                 // Special handling for rice substitutions on Rice Bowls - append to size
                 else if (this.isRiceSubstitution(modName, modifier, stationOrders)) {
@@ -10613,16 +10717,25 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                       if (item.isRiceBowl || item.isUrbanBowl || (item.name && (item.name.toLowerCase().includes('rice bowl') || item.name.toLowerCase().includes('urban bowl')))) {
                         console.log(`[Batch View] Rendering badges for item:`, {
                           name: item.name,
+                          size: item.size,
                           modifierDetails: item.modifierDetails,
                           modifiers: item.modifiers,
                           isRiceBowl: item.isRiceBowl,
-                          isUrbanBowl: item.isUrbanBowl
+                          isUrbanBowl: item.isUrbanBowl,
+                          dumplingType: item.dumplingType,
+                          sauceType: item.sauceType,
+                          riceSubType: item.riceSubType
                         });
                       }
                       
                       // Check for sauce badges (Rice Bowls)
-                      if (item.modifierDetails && item.modifierDetails.sauce) {
-                        const sauceMod = item.modifierDetails.sauce.toLowerCase();
+                      if ((item.modifierDetails && item.modifierDetails.sauce) || item.sauceType) {
+                        console.log(`[Sauce Badge] Processing sauce for ${item.name}:`, {
+                          modifierDetailsSauce: item.modifierDetails?.sauce,
+                          sauceType: item.sauceType,
+                          isRiceBowl: item.isRiceBowl
+                        });
+                        const sauceMod = (item.modifierDetails?.sauce || item.sauceType || '').toLowerCase();
                         let sauceName = '';
                         let sauceClass = '';
                         
@@ -10647,16 +10760,26 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                         } else if (sauceMod.includes('garlic sesame fusion')) {
                           sauceName = 'Garlic Sesame';
                           sauceClass = 'garlic-sesame';
+                        } else if (sauceMod.includes('sweet shoyu')) {
+                          sauceName = 'Sweet Shoyu';
+                          sauceClass = 'shoyu';
+                        } else if (sauceMod.includes('teriyaki')) {
+                          sauceName = 'Teriyaki';
+                          sauceClass = 'teriyaki';
+                        } else if (sauceMod.includes('spicy yuzu')) {
+                          sauceName = 'Spicy Yuzu';
+                          sauceClass = 'yuzu';
                         } else {
-                          // Try to extract sauce name
-                          const withIndex = sauceMod.indexOf('with');
+                          // Use the full sauce name but clean it up
+                          sauceName = item.modifierDetails?.sauce || item.sauceType || '';
+                          // Remove "- Gluten Free" suffix
+                          sauceName = sauceName.replace(/\s*-\s*Gluten\s*Free/gi, '').trim();
+                          // Try to extract sauce name after "with"
+                          const withIndex = sauceName.toLowerCase().indexOf('with');
                           if (withIndex !== -1) {
-                            sauceName = item.modifierDetails.sauce.substring(withIndex + 5).trim();
-                            sauceClass = 'default';
-                          } else {
-                            sauceName = 'Sauce';
-                            sauceClass = 'default';
+                            sauceName = sauceName.substring(withIndex + 5).trim();
                           }
+                          sauceClass = 'default';
                         }
                         
                         if (sauceName) {
@@ -10703,33 +10826,71 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                       }
                       if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
                           item.dumplingType) {
-                        const dumplingChoice = item.dumplingType.toLowerCase();
+                        const fullDumpling = item.dumplingType;
+                        console.log(`[Dumpling Badge] Processing dumpling type: "${fullDumpling}"`);
                         let dumplingProtein = '';
                         let dumplingClass = '';
                         
-                        // Handle colon format
-                        let dumplingType = dumplingChoice;
-                        if (dumplingChoice.includes(':')) {
-                          const parts = dumplingChoice.split(':');
-                          dumplingType = parts[1].trim();
+                        // Try to extract dumpling type from patterns like "Chicken Dumplings" or "18 Dumplings"
+                        const typeMatch = fullDumpling.match(/^(\w+)\s+Dumplings?$/i);
+                        let dumplingType = '';
+                        
+                        if (typeMatch) {
+                          dumplingType = typeMatch[1].toLowerCase();
+                          console.log(`[Dumpling Badge] Extracted type from pattern: "${dumplingType}" (from "${fullDumpling}")`);
+                        } else {
+                          // Handle colon format or use full string
+                          dumplingType = fullDumpling.toLowerCase();
+                          if (dumplingType.includes(':')) {
+                            const parts = dumplingType.split(':');
+                            dumplingType = parts[1].trim();
+                            console.log(`[Dumpling Badge] Extracted type from colon format: "${dumplingType}"`);
+                          } else {
+                            console.log(`[Dumpling Badge] No pattern match, using full string: "${dumplingType}"`);
+                          }
                         }
                         
-                        if (dumplingType.includes('pork')) {
-                          dumplingProtein = '3pc Pork';
-                          dumplingClass = 'pork';
-                        } else if (dumplingType.includes('chicken')) {
-                          dumplingProtein = '3pc Chicken';
-                          dumplingClass = 'chicken';
-                        } else if (dumplingType.includes('vegetable') || dumplingType.includes('veggie')) {
-                          dumplingProtein = '3pc Vegetable';
-                          dumplingClass = 'vegetable';
+                        // Check if it's a number (like "18") - this means it's just a count, not a protein type
+                        if (/^\d+$/.test(dumplingType)) {
+                          console.log(`[Dumpling Badge] Detected numeric dumpling type: "${dumplingType}"`);
+                          // For numeric dumplings, check the full string for protein type
+                          const fullStringLower = fullDumpling.toLowerCase();
+                          if (fullStringLower.includes('pork')) {
+                            dumplingProtein = '3pc Pork';
+                            dumplingClass = 'pork';
+                          } else if (fullStringLower.includes('chicken')) {
+                            dumplingProtein = '3pc Chicken';
+                            dumplingClass = 'chicken';
+                          } else if (fullStringLower.includes('vegetable') || fullStringLower.includes('veggie')) {
+                            dumplingProtein = '3pc Vegetable';
+                            dumplingClass = 'vegetable';
+                          } else {
+                            // Default for numeric dumplings without protein specification
+                            dumplingProtein = '3pc Dumplings';
+                            dumplingClass = 'default';
+                          }
                         } else {
-                          dumplingProtein = '3pc Dumplings';
-                          dumplingClass = 'default';
+                          // Standard protein type checking
+                          if (dumplingType.includes('pork')) {
+                            dumplingProtein = '3pc Pork';
+                            dumplingClass = 'pork';
+                          } else if (dumplingType.includes('chicken')) {
+                            dumplingProtein = '3pc Chicken';
+                            dumplingClass = 'chicken';
+                          } else if (dumplingType.includes('vegetable') || dumplingType.includes('veggie')) {
+                            dumplingProtein = '3pc Vegetable';
+                            dumplingClass = 'vegetable';
+                          } else {
+                            dumplingProtein = '3pc Dumplings';
+                            dumplingClass = 'default';
+                          }
                         }
                         
                         if (dumplingProtein) {
                           badges += `<span class="dumpling-protein-badge ${dumplingClass}">${dumplingProtein}</span>`;
+                          console.log(`[Dumpling Badge] Generated badge: "${dumplingProtein}" with class "${dumplingClass}"`);
+                        } else {
+                          console.log(`[Dumpling Badge] No badge generated for dumpling type: "${fullDumpling}"`);
                         }
                       }
                       
@@ -11572,7 +11733,35 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               ${sauceName ? `<span class="sauce-badge ${sauceClass}">${sauceName}</span>` : ''}
               ${/* Direct check for new top-level properties */ ''}
               ${item.sauceType && !sauceName ? `<span class="sauce-badge">${window.escapeHtml(item.sauceType)}</span>` : ''}
-              ${item.dumplingType && !dumplingProtein ? `<span class="dumpling-protein-badge">3pc ${window.escapeHtml(item.dumplingType.replace(/.*dumpling.*/i, '').trim())}</span>` : ''}
+              ${item.dumplingType && !dumplingProtein ? (() => {
+                // Extract protein type from dumplingType
+                console.log(`[Display] Fallback dumpling extraction from dumplingType: "${item.dumplingType}"`);
+                const dumplingText = item.dumplingType.toLowerCase();
+                let proteinType = '';
+                let badgeClass = 'default';
+                
+                if (dumplingText.includes('pork')) {
+                  proteinType = 'Pork';
+                  badgeClass = 'pork';
+                } else if (dumplingText.includes('chicken')) {
+                  proteinType = 'Chicken';
+                  badgeClass = 'chicken';
+                } else if (dumplingText.includes('vegetable') || dumplingText.includes('veggie')) {
+                  proteinType = 'Vegetable';
+                  badgeClass = 'vegetable';
+                } else {
+                  // Try to extract from pattern like "3 Piece X Dumplings" or "X Dumplings"
+                  const match = dumplingText.match(/(?:piece\s+)?(\w+)\s+dumpling/i);
+                  if (match && match[1]) {
+                    proteinType = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+                  } else {
+                    proteinType = 'Dumplings';
+                  }
+                }
+                
+                console.log(`[Display] Extracted protein type: "${proteinType}" with class: "${badgeClass}"`);
+                return `<span class="dumpling-protein-badge ${badgeClass}">3pc ${window.escapeHtml(proteinType)}</span>`;
+              })() : ''}
               ${item.riceSubType && !urbanBowlRiceType ? `<span class="rice-type-badge">${window.escapeHtml(item.riceSubType)}</span>` : ''}
               <span class="item-quantity">×${item.totalQuantity}</span>
             </div>
