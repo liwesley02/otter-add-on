@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.7
+// @version      5.3.0
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// v5.2.7: Added auto-clear toggle - completed orders can be automatically removed or shown with strikethrough
-// v5.2.6: Updated packing - click entire item to mark as packed (turns green), removed checkboxes
-// v5.2.5: Removed unused category view code for cleaner codebase
+// v5.3.0: Disabled ALL bottom notifications - no more annoying update messages
+// v5.2.9: Removed annoying "Click here to retry order detection" notification
+// v5.2.8: Fixed grey container issue and auto-clear duplicate batch creation bug
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -2703,20 +2703,7 @@ font-weight: 500;
 margin-left: 10px;
 }
 
-/* Adjust batch item styling for modifiers */
-.batch-item {
-background: #2a2a2a;
-border-radius: 8px;
-padding: 16px;
-margin-bottom: 12px;
-display: flex;
-flex-direction: column;
-transition: all 0.2s ease;
-}
-
-.batch-item:hover {
-background: #333333;
-}
+/* Adjust batch item styling for modifiers - REMOVED DUPLICATE DARK STYLING */
 
 .batch-item .item-info {
 display: flex;
@@ -5196,7 +5183,21 @@ body {
   
     // Time-based system doesn't allow manual adding - orders are assigned automatically
     refreshBatchAssignments(orders) {
-      this.assignOrderToBatches(orders);
+      // Only process orders that aren't already in batches
+      const newOrders = orders.filter(order => {
+        // Check if this order is already in any batch
+        for (const batch of this.batches) {
+          if (batch.orders.has(order.id)) {
+            return false; // Skip this order, it's already in a batch
+          }
+        }
+        return true; // This is a new order
+      });
+      
+      if (newOrders.length > 0) {
+        console.log(`[BatchManager] Processing ${newOrders.length} new orders (filtered from ${orders.length} total)`);
+        this.assignOrderToBatches(newOrders);
+      }
     }
     
     getCurrentBatchItemCount() {
@@ -10198,10 +10199,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             </label>
           </div>
         </div>
-        <div class="update-status" id="update-status" style="display: none;">
-          <span class="update-indicator"></span>
-          <span class="update-text">Detecting changes...</span>
-        </div>
+        <!-- Update status removed - too annoying -->
       `;
       
       footerContainer.innerHTML = html;
@@ -11510,24 +11508,8 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
     }
     
     showNotification(message, type = 'info', duration = 3000) {
-      const notification = document.createElement('div');
-      notification.className = `otter-notification ${type}`;
-      notification.textContent = message;
-      
-      this.overlayElement.appendChild(notification);
-      
-      setTimeout(() => {
-        notification.classList.add('show');
-      }, 10);
-      
-      if (duration > 0) {
-        setTimeout(() => {
-          notification.classList.remove('show');
-          setTimeout(() => notification.remove(), 300);
-        }, duration);
-      }
-      
-      return notification;
+      // Notifications disabled - too annoying
+      return null;
     }
     
     showProgress(message) {
@@ -14620,18 +14602,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         progress.remove();
         
         overlayUI.showNotification('No orders found. Try refreshing the page.', 'warning');
-        
-        // Show retry button
-        const retryNotification = overlayUI.showNotification(
-          'Click here to retry order detection', 
-          'info',
-          0 // Don't auto-hide
-        );
-        retryNotification.style.cursor = 'pointer';
-        retryNotification.addEventListener('click', async () => {
-          retryNotification.remove();
-          await extractAndBatchOrders(useDetailed);
-        });
         
       } catch (error) {
         console.error('Error in order extraction:', error);
