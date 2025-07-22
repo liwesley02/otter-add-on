@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.5
+// @version      5.2.6
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// v5.2.4: Fixed packing checkboxes to appear in wave/batch view (the main view you use)
-// v5.2.3: Added packing checkboxes - click items to mark as packed, state persists between refreshes
+// v5.2.6: Updated packing - click entire item to mark as packed (turns green), removed checkboxes
+// v5.2.5: Removed unused category view code for cleaner codebase
+// v5.2.4: Fixed packing checkboxes to appear in wave/batch view
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -968,13 +969,23 @@ font-size: 13px;
 position: relative;
 }
 .wave-item.packed {
-opacity: 0.5;
+background-color: #28a745 !important;
+border-color: #28a745 !important;
 }
-.wave-item.packed .wave-item-name {
-text-decoration: line-through;
+.wave-item.packed .wave-item-name,
+.wave-item.packed .wave-item-quantity,
+.wave-item.packed span {
+color: white !important;
 }
-.wave-item .pack-checkbox {
-margin-right: 8px;
+.wave-item {
+cursor: pointer;
+transition: all 0.3s ease;
+-webkit-tap-highlight-color: transparent;
+user-select: none;
+}
+.wave-item:hover:not(.packed) {
+background-color: #f0f0f0;
+transform: translateX(2px);
 }
 
 .wave-item-name {
@@ -1078,39 +1089,26 @@ min-height: 48px;
 background: #e9ecef;
 }
 .batch-item.packed {
-opacity: 0.5;
-text-decoration: line-through;
+background-color: #28a745 !important;
+border-color: #28a745 !important;
 }
-.batch-item.packed .pack-checkbox {
-background: #28a745;
-border-color: #28a745;
+.batch-item.packed .item-name,
+.batch-item.packed .item-quantity,
+.batch-item.packed .item-price,
+.batch-item.packed span {
+color: white !important;
 }
-.pack-checkbox {
-width: 28px;
-height: 28px;
-border: 2px solid #6c757d;
-border-radius: 4px;
-background: white;
+.batch-item {
 cursor: pointer;
-display: flex;
-align-items: center;
-justify-content: center;
-transition: all 0.2s ease;
-margin-right: 12px;
-flex-shrink: 0;
+transition: all 0.3s ease;
 -webkit-tap-highlight-color: transparent;
 user-select: none;
 }
-.pack-checkbox:hover {
-border-color: #28a745;
-transform: scale(1.1);
+.batch-item:hover:not(.packed) {
+background-color: #e0e0e0;
+transform: translateX(2px);
 }
-.pack-checkbox.checked::after {
-content: '✓';
-color: white;
-font-size: 16px;
-font-weight: bold;
-}
+/* Pack checkbox removed - clicking entire item toggles packed state */
 
 .item-info {
 display: flex;
@@ -10555,7 +10553,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 
                 html += `
                   <li class="${itemClass} ${isWaveItemPacked ? 'packed' : ''}" data-item-id="${waveItemId}"${customerNames}>
-                    <div class="pack-checkbox ${isWaveItemPacked ? 'checked' : ''}" data-item-id="${waveItemId}"></div>
                     ${colorDotsHtml}
                     <span class="wave-item-quantity">${window.escapeHtml(item.batchQuantity || item.totalQuantity || 0)}x</span>
                     <span class="wave-item-name">${this.formatItemNameWithSauce(item.baseName || item.name, item)}</span>
@@ -10819,6 +10816,32 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
           const customerName = e.target.dataset.customer;
           const notes = e.target.dataset.notes;
           this.showOrderNoteModal(orderNumber, notes, customerName);
+        });
+      });
+      
+      // Add click handlers for wave items to toggle packed state
+      container.querySelectorAll('.wave-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          // Don't toggle if clicking on other interactive elements
+          if (e.target.classList.contains('order-notes') || 
+              e.target.classList.contains('complete-wave-btn')) {
+            return;
+          }
+          
+          const itemId = item.dataset.itemId;
+          if (!itemId) return;
+          
+          // Toggle packed state
+          if (this.packedItems.has(itemId)) {
+            this.packedItems.delete(itemId);
+            item.classList.remove('packed');
+          } else {
+            this.packedItems.set(itemId, true);
+            item.classList.add('packed');
+          }
+          
+          // Save state
+          this.savePackedState();
         });
       });
       
