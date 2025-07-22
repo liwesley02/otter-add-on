@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.2.1-debug
+// @version      5.2.3
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// DEBUG VERSION: Added comprehensive logging for Urban Bowl tag data flow
+// v5.2.3: Added packing checkboxes - click items to mark as packed, state persists between refreshes
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -1085,6 +1085,40 @@ min-height: 48px;
 
 .batch-item:hover {
 background: #e9ecef;
+}
+.batch-item.packed {
+opacity: 0.5;
+text-decoration: line-through;
+}
+.batch-item.packed .pack-checkbox {
+background: #28a745;
+border-color: #28a745;
+}
+.pack-checkbox {
+width: 28px;
+height: 28px;
+border: 2px solid #6c757d;
+border-radius: 4px;
+background: white;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: all 0.2s ease;
+margin-right: 12px;
+flex-shrink: 0;
+-webkit-tap-highlight-color: transparent;
+user-select: none;
+}
+.pack-checkbox:hover {
+border-color: #28a745;
+transform: scale(1.1);
+}
+.pack-checkbox.checked::after {
+content: '✓';
+color: white;
+font-size: 16px;
+font-weight: bold;
 }
 
 .item-info {
@@ -9883,6 +9917,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       this.lastOrderCount = 0;
       this.lastOrderIds = new Set();
       this.isMonitoringChanges = false;
+      this.packedItems = new Map(); // Track packed items by unique ID
     }
   
     init() {
@@ -9891,6 +9926,9 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         this.isExtracting = false;
         this.extractionQueue = [];
         this.isScrapingMode = false;
+        
+        // Load packed items from storage
+        this.loadPackedState();
         this.tabId = Date.now(); // Unique ID for this tab
         
         this.createToggleButton();
@@ -10581,7 +10619,9 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                           modifierDetails: item.modifierDetails,
                           modifiers: item.modifiers,
                           isRiceBowl: item.isRiceBowl,
-                          isUrbanBowl: item.isUrbanBowl
+                          isUrbanBowl: item.isUrbanBowl,
+                          dumplingType: item.dumplingType,
+                          sauceType: item.sauceType
                         });
                       }
                       
@@ -10887,6 +10927,49 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
           this.addToWave(itemKey, itemData);
         });
       });
+      
+      // Add pack checkbox listeners
+      container.querySelectorAll('.pack-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const itemId = e.target.dataset.itemId;
+          const batchItem = e.target.closest('.batch-item');
+          
+          if (this.packedItems.has(itemId)) {
+            // Uncheck
+            this.packedItems.delete(itemId);
+            checkbox.classList.remove('checked');
+            batchItem.classList.remove('packed');
+          } else {
+            // Check
+            this.packedItems.set(itemId, true);
+            checkbox.classList.add('checked');
+            batchItem.classList.add('packed');
+          }
+          
+          // Save packed state to storage
+          this.savePackedState();
+        });
+      });
+    }
+    
+    savePackedState() {
+      try {
+        const packedArray = Array.from(this.packedItems.keys());
+        GM_setValue('packedItems', packedArray);
+      } catch (error) {
+        console.error('Error saving packed state:', error);
+      }
+    }
+    
+    loadPackedState() {
+      try {
+        const packedArray = GM_getValue('packedItems', []);
+        this.packedItems = new Map(packedArray.map(id => [id, true]));
+      } catch (error) {
+        console.error('Error loading packed state:', error);
+        this.packedItems = new Map();
+      }
     }
   
     renderHierarchicalCategory(categoryKey, categoryData) {
@@ -11524,8 +11607,13 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
           });
         }
         
+        // Generate unique ID for this item
+        const itemId = `${item.name}-${item.size}-${JSON.stringify(item.modifierDetails || {})}`.replace(/[^a-zA-Z0-9]/g, '-');
+        const isPacked = this.packedItems.has(itemId);
+        
         html += `
-          <div class="batch-item ${hasNewOrders ? 'new-item' : ''}">
+          <div class="batch-item ${hasNewOrders ? 'new-item' : ''} ${isPacked ? 'packed' : ''}" data-item-id="${itemId}">
+            <div class="pack-checkbox ${isPacked ? 'checked' : ''}" data-item-id="${itemId}"></div>
             <div class="item-info">
               ${hasNewOrders ? '<span class="new-badge">NEW</span>' : ''}
               <span class="item-name">${this.formatItemNameWithSauce(item.name, item)}</span>
@@ -13207,6 +13295,11 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
     
     clearCompletedOrders() {
       console.log('[OverlayUI] Clearing completed orders and cache...');
+      
+      // Clear packed items
+      this.packedItems.clear();
+      this.savePackedState();
+      console.log('[OverlayUI] Cleared packed items');
       
       // Clear all caches
       if (window.otterOrderCache) {
