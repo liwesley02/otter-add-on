@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.6.2.1
+// @version      5.6.5
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// Fixed Urban Bowl rice badge display to match desktop version
+// Fixed item name rendering to match desktop exactly
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -4097,6 +4097,17 @@ body {
   
     getBatchedItems() {
       const batchedArray = Array.from(this.batches.values());
+      
+      // Debug Urban Bowl items
+      const urbanBowls = batchedArray.filter(item => item.isUrbanBowl || item.name.toLowerCase().includes('urban bowl'));
+      if (urbanBowls.length > 0) {
+        console.log('[OrderBatcher.getBatchedItems] Urban Bowl items:', urbanBowls.map(item => ({
+          name: item.name,
+          modifierDetails: item.modifierDetails,
+          dumplingChoice: item.dumplingChoice,
+          dumplingType: item.dumplingType
+        })));
+      }
       
       return batchedArray.sort((a, b) => {
         if (a.category !== b.category) {
@@ -10706,30 +10717,58 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 if (item.name && item.name.toLowerCase().includes('urban bowl')) {
                   console.log('[BADGE RENDER] Urban Bowl item:', {
                     name: item.name,
+                    baseName: item.baseName,
                     hasModifierDetails: !!item.modifierDetails,
                     modifierDetails: item.modifierDetails,
                     dumplingChoice: item.modifierDetails?.dumplingChoice,
-                    mergedFromEnriched: !!item.categoryInfo
+                    dumplingType: item.dumplingType,
+                    dumplingChoiceTopLevel: item.dumplingChoice,
+                    mergedFromEnriched: !!item.categoryInfo,
+                    nameIncludesDumplings: item.name.includes('Dumplings')
                   });
                 }
                 
-                if (item.name && item.name.toLowerCase().includes('urban bowl') && item.modifierDetails?.dumplingChoice) {
-                  const fullDumpling = item.modifierDetails.dumplingChoice;
-                  const typeMatch = fullDumpling.match(/^(\w+)\s+Dumplings$/i);
-                  const dumplingType = typeMatch ? typeMatch[1] : fullDumpling;
-                  
-                  // Determine color class based on dumpling type
-                  let colorClass = '';
-                  const typeLower = dumplingType.toLowerCase();
-                  if (typeLower.includes('chicken')) {
-                    colorClass = 'chicken';
-                  } else if (typeLower.includes('pork')) {
-                    colorClass = 'pork';
-                  } else if (typeLower.includes('vegetable') || typeLower.includes('veggie')) {
-                    colorClass = 'vegetable';
+                // Check multiple sources for dumpling data
+                let dumplingData = null;
+                if (item.name && item.name.toLowerCase().includes('urban bowl')) {
+                  // Priority 1: modifierDetails.dumplingChoice
+                  if (item.modifierDetails?.dumplingChoice) {
+                    dumplingData = item.modifierDetails.dumplingChoice;
+                  }
+                  // Priority 2: top-level dumplingChoice
+                  else if (item.dumplingChoice) {
+                    dumplingData = item.dumplingChoice;
+                  }
+                  // Priority 3: top-level dumplingType
+                  else if (item.dumplingType) {
+                    dumplingData = item.dumplingType;
+                  }
+                  // Priority 4: parse from name
+                  else if (item.name.includes('(') && item.name.includes('Dumplings')) {
+                    const match = item.name.match(/\(([^)]+Dumplings)\)/i);
+                    if (match) {
+                      dumplingData = match[1];
+                    }
                   }
                   
-                  dumplingBadgeHtml = `<span class="dumpling-badge ${colorClass}">${window.escapeHtml(dumplingType)}</span>`;
+                  if (dumplingData) {
+                    const fullDumpling = dumplingData;
+                    const typeMatch = fullDumpling.match(/^(\w+)\s+Dumplings$/i);
+                    const dumplingType = typeMatch ? typeMatch[1] : fullDumpling;
+                    
+                    // Determine color class based on dumpling type
+                    let colorClass = '';
+                    const typeLower = dumplingType.toLowerCase();
+                    if (typeLower.includes('chicken')) {
+                      colorClass = 'chicken';
+                    } else if (typeLower.includes('pork')) {
+                      colorClass = 'pork';
+                    } else if (typeLower.includes('vegetable') || typeLower.includes('veggie')) {
+                      colorClass = 'vegetable';
+                    }
+                    
+                    dumplingBadgeHtml = `<span class="dumpling-badge ${colorClass}">${window.escapeHtml(dumplingType)}</span>`;
+                  }
                 }
                 
                 // Extract sauce badge - only for Steak and Salmon bowls
@@ -10809,7 +10848,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                   <li class="${itemClass}"${customerNames}>
                     ${colorDotsHtml}
                     <span class="wave-item-quantity">${window.escapeHtml(item.batchQuantity || item.totalQuantity || 0)}x</span>
-                    <span class="wave-item-name">${this.formatItemNameWithSauce(item.baseName || item.name, item)}</span>
+                    <span class="wave-item-name">${window.escapeHtml(item.baseName || item.name)}</span>
                     ${badgeStackHtml}
                     ${item.size && item.size !== 'no-size' && item.size !== 'urban' ? (() => {
                       // Extract the actual size from compound values like "small - Garlic Butter Fried Rice Substitute"
