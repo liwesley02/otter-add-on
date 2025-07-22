@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.5.3
+// @version      5.5.5
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// Fixed Urban Bowl dumpling badges and sauce badges for Steak/Salmon bowls in batch view
+// Fixed Urban Bowl dumpling badges and sauce badges using fallback properties
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -10547,6 +10547,17 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 // Extract dumpling badge for Urban Bowls
                 let dumplingBadgeHtml = '';
                 if (item.name && item.name.toLowerCase().includes('urban bowl')) {
+                  // Debug logging for Urban Bowl items
+                  console.log(`[Urban Bowl Badge Debug] Processing Urban Bowl in batch view:`, {
+                    name: item.name,
+                    hasModifierDetails: !!item.modifierDetails,
+                    modifierDetails: item.modifierDetails,
+                    dumplingChoice: item.modifierDetails?.dumplingChoice,
+                    dumplingType: item.dumplingType,
+                    isUrbanBowl: item.isUrbanBowl,
+                    allKeys: Object.keys(item)
+                  });
+                  
                   if (item.modifierDetails?.dumplingChoice) {
                     const fullDumpling = item.modifierDetails.dumplingChoice;
                     const typeMatch = fullDumpling.match(/^(\w+)\s+Dumplings$/i);
@@ -10564,8 +10575,25 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                     }
                     
                     dumplingBadgeHtml = `<span class="dumpling-badge ${colorClass}">${window.escapeHtml(dumplingType)}</span>`;
+                  } else if (item.dumplingType) {
+                    // Use dumplingType as primary fallback
+                    console.log(`[Urban Bowl Badge Debug] Using dumplingType property:`, item.dumplingType);
+                    const dumplingType = item.dumplingType;
+                    
+                    // Determine color class based on dumpling type
+                    let colorClass = '';
+                    const typeLower = dumplingType.toLowerCase();
+                    if (typeLower.includes('chicken')) {
+                      colorClass = 'chicken';
+                    } else if (typeLower.includes('pork')) {
+                      colorClass = 'pork';
+                    } else if (typeLower.includes('vegetable') || typeLower.includes('veggie')) {
+                      colorClass = 'vegetable';
+                    }
+                    
+                    dumplingBadgeHtml = `<span class="dumpling-badge ${colorClass}">${window.escapeHtml(dumplingType)}</span>`;
                   } else {
-                    // Try extracting from item name as fallback
+                    // Try extracting from item name as last fallback
                     const dumplingMatch = item.name.match(/\(([^)]+\s+Dumplings)\)/i);
                     if (dumplingMatch) {
                       const fullDumpling = dumplingMatch[1];
@@ -10592,29 +10620,47 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 let sauceBadgeHtml = '';
                 const itemNameLower = (item.name || '').toLowerCase();
                 if ((itemNameLower.includes('steak') || itemNameLower.includes('salmon')) && 
-                    itemNameLower.includes('rice bowl') && 
-                    item.modifierDetails?.sauce) {
-                  // Remove "- Gluten Free" from sauce name
-                  let sauceName = item.modifierDetails.sauce;
-                  sauceName = sauceName.replace(/\s*-\s*Gluten\s*Free/gi, '').trim();
-                  sauceBadgeHtml = `<span class="sauce-badge">${window.escapeHtml(sauceName)}</span>`;
+                    itemNameLower.includes('rice bowl')) {
+                  let sauceName = null;
+                  
+                  if (item.modifierDetails?.sauce) {
+                    sauceName = item.modifierDetails.sauce;
+                  } else if (item.sauceType) {
+                    // Use sauceType as fallback
+                    sauceName = item.sauceType;
+                  }
+                  
+                  if (sauceName) {
+                    // Remove "- Gluten Free" from sauce name
+                    sauceName = sauceName.replace(/\s*-\s*Gluten\s*Free/gi, '').trim();
+                    sauceBadgeHtml = `<span class="sauce-badge">${window.escapeHtml(sauceName)}</span>`;
+                  }
                 }
                 
                 // Extract rice substitute for Urban Bowls
                 let riceSubBadgeHtml = '';
-                if (itemNameLower.includes('urban bowl') && 
-                    item.modifierDetails?.riceSubstitution && 
-                    item.modifierDetails.riceSubstitution !== 'White Rice') {
-                  let riceType = item.modifierDetails.riceSubstitution;
-                  // Shorten the display name
-                  if (riceType.toLowerCase().includes('garlic butter fried rice')) {
-                    riceType = 'Garlic Butter Rice';
-                  } else if (riceType.toLowerCase().includes('fried rice')) {
-                    riceType = 'Fried Rice';
-                  } else if (riceType.toLowerCase().includes('noodle')) {
-                    riceType = 'Noodles';
+                if (itemNameLower.includes('urban bowl')) {
+                  let riceSubstitution = null;
+                  
+                  if (item.modifierDetails?.riceSubstitution) {
+                    riceSubstitution = item.modifierDetails.riceSubstitution;
+                  } else if (item.riceSubType && item.riceSubType !== 'White Rice') {
+                    // Use riceSubType as fallback
+                    riceSubstitution = item.riceSubType;
                   }
-                  riceSubBadgeHtml = `<span class="rice-type-badge fried-rice">${window.escapeHtml(riceType)}</span>`;
+                  
+                  if (riceSubstitution && riceSubstitution !== 'White Rice') {
+                    let riceType = riceSubstitution;
+                    // Shorten the display name
+                    if (riceType.toLowerCase().includes('garlic butter fried rice')) {
+                      riceType = 'Garlic Butter Rice';
+                    } else if (riceType.toLowerCase().includes('fried rice')) {
+                      riceType = 'Fried Rice';
+                    } else if (riceType.toLowerCase().includes('noodle')) {
+                      riceType = 'Noodles';
+                    }
+                    riceSubBadgeHtml = `<span class="rice-type-badge fried-rice">${window.escapeHtml(riceType)}</span>`;
+                  }
                 }
                 
                 // Collect all badges
