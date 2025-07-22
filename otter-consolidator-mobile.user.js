@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.3.2
+// @version      5.3.3
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.3.3: Fixed auto-clear not to remove all orders when page hasn't loaded
 // v5.3.2: Simplified auto-clear - rebuilds with only visible orders, prevents duplicate batches
 // v5.3.1: Fixed auto-clear to properly remove items, changed green to softer shade (#5cb85c)
-// v5.3.0: Disabled ALL bottom notifications - no more annoying update messages
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -11579,6 +11579,13 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       try {
         console.log('Checking for updates...');
         
+        // Make sure we're on the orders page
+        const orderRows = document.querySelectorAll('[data-testid="order-row"]');
+        if (orderRows.length === 0) {
+          console.log('[OrderMonitoring] No order rows found - might not be on orders page');
+          return;
+        }
+        
         // If auto-clear is enabled, just check for completed orders
         // Don't do a full refresh which would recreate everything
         if (this.autoClearCompleted) {
@@ -11617,6 +11624,13 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       });
       
       console.log(`[OrderMonitoring] Found ${visibleOrderIds.size} visible orders:`, Array.from(visibleOrderIds));
+      
+      // If we can't find any orders in the DOM, don't clear anything
+      // This might mean we're on the wrong page or orders haven't loaded yet
+      if (visibleOrderIds.size === 0) {
+        console.log('[OrderMonitoring] No orders found in DOM - skipping completed check');
+        return;
+      }
       
       // Check all orders in our batches
       const completedOrders = [];
