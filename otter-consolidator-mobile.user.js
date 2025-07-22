@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.3.0
+// @version      5.3.1
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.3.1: Fixed auto-clear to properly remove items, changed green to softer shade (#5cb85c)
 // v5.3.0: Disabled ALL bottom notifications - no more annoying update messages
 // v5.2.9: Removed annoying "Click here to retry order detection" notification
-// v5.2.8: Fixed grey container issue and auto-clear duplicate batch creation bug
 // @author       HHG Team
 // @match        https://app.tryotter.com/*
 // @match        https://www.tryotter.com/*
@@ -702,7 +702,7 @@ cursor: help;
 .est-completion.ready {
 background: rgba(40, 167, 69, 0.3);
 border-color: rgba(40, 167, 69, 0.6);
-color: #28a745;
+color: #5cb85c;
 animation: pulse 1s ease-in-out infinite;
 }
 
@@ -752,7 +752,7 @@ transition: all 0.3s ease;
 
 .batch-customer-badge.order-new {
 background: rgba(40, 167, 69, 0.3);
-border: 1px solid #28a745;
+border: 1px solid #5cb85c;
 animation: newOrderPulse 2s ease-in-out infinite;
 }
 
@@ -770,7 +770,7 @@ background: #2a2a2a;
 
 .batch-customer-badge.order-completed::before {
 content: "✓ ";
-color: #28a745;
+color: #5cb85c;
 text-decoration: none;
 font-weight: bold;
 }
@@ -969,8 +969,8 @@ font-size: 13px;
 position: relative;
 }
 .wave-item.packed {
-background-color: #28a745 !important;
-border-color: #28a745 !important;
+background-color: #5cb85c !important;
+border-color: #5cb85c !important;
 }
 .wave-item.packed .wave-item-name,
 .wave-item.packed .wave-item-quantity,
@@ -1089,8 +1089,8 @@ min-height: 48px;
 background: #e9ecef;
 }
 .batch-item.packed {
-background-color: #28a745 !important;
-border-color: #28a745 !important;
+background-color: #5cb85c !important;
+border-color: #5cb85c !important;
 }
 .batch-item.packed .item-name,
 .batch-item.packed .item-quantity,
@@ -1708,7 +1708,7 @@ margin-top: 2px;
 /* Size-specific colors - using !important to override .item-size styles */
 .size-badge[data-size="small"],
 .size-badge[data-size="sm"] {
-background: #28a745 !important; /* Green for small */
+background: #5cb85c !important; /* Green for small */
 color: white !important;
 }
 
@@ -1909,14 +1909,14 @@ border-radius: 3px;
 }
 
 .wave-section.normal {
-border: 3px solid #28a745;
+border: 3px solid #5cb85c;
 background: #2d2d2d;
 }
 
 .wave-section.normal .wave-header {
 background: #1f3d29;
 color: white;
-border-bottom: 1px solid #28a745;
+border-bottom: 1px solid #5cb85c;
 }
 
 @keyframes pulse-text {
@@ -2032,7 +2032,7 @@ border-color: #ffc107;
 
 .batch-customer-badge.order-completed {
 background: rgba(40, 167, 69, 0.2);
-border-color: #28a745;
+border-color: #5cb85c;
 opacity: 0.7;
 }
 
@@ -2180,7 +2180,7 @@ text-align: center;
 .complete-wave-btn {
 width: 100%;
 padding: 10px;
-background: #28a745;
+background: #5cb85c;
 color: white;
 border: none;
 border-radius: 4px;
@@ -2260,8 +2260,8 @@ letter-spacing: 0.5px;
 
 .mode-badge.scraping {
 background: rgba(40, 167, 69, 0.3);
-color: #28a745;
-border: 1px solid #28a745;
+color: #5cb85c;
+border: 1px solid #5cb85c;
 }
 
 .mode-badge.view-only {
@@ -2300,7 +2300,7 @@ transition: all 0.3s ease;
 
 .live-status.live {
 background: rgba(40, 167, 69, 0.1);
-color: #28a745;
+color: #5cb85c;
 }
 
 .live-status.new {
@@ -2366,7 +2366,7 @@ margin-left: 5px;
 
 .api-badge {
 font-size: 10px;
-color: #28a745;
+color: #5cb85c;
 font-weight: 600;
 background: rgba(40, 167, 69, 0.1);
 padding: 2px 5px;
@@ -2421,7 +2421,7 @@ text-align: center;
 
 .wave-capacity-input:focus {
 outline: none;
-border-color: #28a745;
+border-color: #5cb85c;
 }
 
 .refresh-btn {
@@ -2465,7 +2465,7 @@ bottom: 30px;
 right: 30px;
 width: 60px;
 height: 60px;
-background: #28a745;
+background: #5cb85c;
 border: none;
 border-radius: 50%;
 color: white;
@@ -2570,7 +2570,7 @@ transform: translateY(-2px);
 }
 
 .otter-mode-option.scraping:hover {
-border-color: #28a745;
+border-color: #5cb85c;
 box-shadow: 0 5px 20px rgba(40, 167, 69, 0.3);
 }
 
@@ -10217,7 +10217,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             const saveIndicator = document.createElement('span');
             saveIndicator.className = 'save-indicator';
             saveIndicator.textContent = '✓ Saved';
-            saveIndicator.style.cssText = 'color: #28a745; margin-left: 10px; animation: fadeIn 0.3s;';
+            saveIndicator.style.cssText = 'color: #5cb85c; margin-left: 10px; animation: fadeIn 0.3s;';
             capacityInput.parentElement.appendChild(saveIndicator);
             
             // Remove indicator after 2 seconds
@@ -11640,12 +11640,59 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
           console.log(`[OrderMonitoring] Auto-clearing ${completedOrders.length} completed orders`);
           
           completedOrders.forEach(orderId => {
-            // Remove from all batches
+            // Remove from all batches and their items
             this.batchManager.batches.forEach(batch => {
               if (batch.orders.has(orderId)) {
                 batch.orders.delete(orderId);
+                
+                // Also remove from items in the batch
+                batch.items.forEach((item, itemKey) => {
+                  // Remove this order from the item's orders list
+                  if (item.orders) {
+                    const originalLength = item.orders.length;
+                    item.orders = item.orders.filter(order => order.orderId !== orderId);
+                    
+                    // If we removed an order, update quantities
+                    if (item.orders.length < originalLength) {
+                      if (item.orders.length === 0) {
+                        // No orders left for this item, remove it
+                        batch.items.delete(itemKey);
+                      } else {
+                        // Update quantities
+                        item.totalQuantity = item.orders.reduce((sum, order) => sum + (order.quantity || 1), 0);
+                        item.batchQuantity = item.totalQuantity;
+                      }
+                    }
+                  }
+                });
               }
             });
+            
+            // Also remove from orderBatcher
+            if (this.orderBatcher) {
+              // Find and remove from all batches in orderBatcher
+              this.orderBatcher.batches.forEach((batch, key) => {
+                if (batch.orders) {
+                  const originalLength = batch.orders.length;
+                  batch.orders = batch.orders.filter(order => order.orderId !== orderId);
+                  
+                  if (batch.orders.length < originalLength) {
+                    // Update total quantity
+                    batch.totalQuantity = batch.orders.reduce((sum, order) => sum + (order.quantity || 1), 0);
+                    
+                    // If no orders left, remove the batch
+                    if (batch.orders.length === 0) {
+                      this.orderBatcher.batches.delete(key);
+                    }
+                  }
+                }
+              });
+              
+              // Remove from orders map
+              if (this.orderBatcher.orders) {
+                this.orderBatcher.orders.delete(orderId);
+              }
+            }
           });
           
           this.showNotification(`${completedOrders.length} order${completedOrders.length > 1 ? 's' : ''} auto-cleared`, 'success');
@@ -12642,7 +12689,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
           top: 50%;
           right: 15px;
           transform: translateY(-50%);
-          background: #28a745;
+          background: #5cb85c;
           color: white;
           padding: 4px 12px;
           border-radius: 12px;
@@ -13650,7 +13697,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
           position: fixed;
           top: 20px;
           right: 20px;
-          background: #28a745;
+          background: #5cb85c;
           color: white;
           padding: 15px 20px;
           border-radius: 5px;
