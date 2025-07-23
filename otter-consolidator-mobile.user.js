@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.2.9
+// @version      5.3.0
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.3.0: Fixed Urban Bowl dumpling badges, Rice Bowl sauce/rice type badges, added more sauce types
 // v5.2.9: Optimized clear completed orders - now much faster, only removes completed without full rebuild
 // v5.2.8: Changed green to softer shade (#5cb85c), disabled all notifications, removed auto-clear and related code
 // v5.2.7: Completed orders shown with strikethrough only (manual mode)
@@ -3087,6 +3088,23 @@ background: #f44336; /* Red */
 
 .sauce-badge.garlic-sesame {
 background: #ff6f00; /* Deep Orange */
+}
+
+.sauce-badge.shoyu {
+background: #795548; /* Brown */
+}
+
+.sauce-badge.soy-ginger {
+background: #3f51b5; /* Indigo */
+}
+
+.sauce-badge.yuzu {
+background: #ffeb3b; /* Yellow */
+color: #333; /* Dark text for light background */
+}
+
+.sauce-badge.teriyaki {
+background: #5d4037; /* Dark Brown */
 }
 
 .sauce-badge.default {
@@ -10602,8 +10620,8 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                       }
                       
                       // Check for sauce badges (Rice Bowls)
-                      if (item.modifierDetails && item.modifierDetails.sauce) {
-                        const sauceMod = item.modifierDetails.sauce.toLowerCase();
+                      if ((item.modifierDetails && item.modifierDetails.sauce) || item.sauceType) {
+                        const sauceMod = (item.modifierDetails?.sauce || item.sauceType || '').toLowerCase();
                         let sauceName = '';
                         let sauceClass = '';
                         
@@ -10628,11 +10646,24 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                         } else if (sauceMod.includes('garlic sesame fusion')) {
                           sauceName = 'Garlic Sesame';
                           sauceClass = 'garlic-sesame';
+                        } else if (sauceMod.includes('sweet shoyu')) {
+                          sauceName = 'Sweet Shoyu';
+                          sauceClass = 'shoyu';
+                        } else if (sauceMod.includes('soy ginger')) {
+                          sauceName = 'Soy Ginger';
+                          sauceClass = 'soy-ginger';
+                        } else if (sauceMod.includes('spicy yuzu')) {
+                          sauceName = 'Spicy Yuzu';
+                          sauceClass = 'yuzu';
+                        } else if (sauceMod.includes('teriyaki')) {
+                          sauceName = 'Teriyaki';
+                          sauceClass = 'teriyaki';
                         } else {
                           // Try to extract sauce name
+                          const originalSauce = item.modifierDetails?.sauce || item.sauceType || '';
                           const withIndex = sauceMod.indexOf('with');
                           if (withIndex !== -1) {
-                            sauceName = item.modifierDetails.sauce.substring(withIndex + 5).trim();
+                            sauceName = originalSauce.substring(withIndex + 5).trim();
                             sauceClass = 'default';
                           } else {
                             sauceName = 'Sauce';
@@ -10641,7 +10672,33 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                         }
                         
                         if (sauceName) {
+                          // Clean up sauce name - remove "Gluten Free" text
+                          sauceName = sauceName.replace(/\s*Gluten\s*Free\s*/gi, '').trim();
                           badges += `<span class="sauce-badge ${sauceClass}">${sauceName}</span>`;
+                        }
+                      }
+                      
+                      // Check for Rice Bowl rice substitution
+                      if ((item.isRiceBowl || (item.name && item.name.toLowerCase().includes('rice bowl'))) && 
+                          item.modifierDetails?.riceSubstitution && 
+                          item.modifierDetails.riceSubstitution !== 'White Rice') {
+                        const riceSub = item.modifierDetails.riceSubstitution.toLowerCase();
+                        let riceType = '';
+                        let riceClass = '';
+                        
+                        if (riceSub.includes('garlic butter')) {
+                          riceType = 'Garlic Butter Rice';
+                          riceClass = 'garlic-butter';
+                        } else if (riceSub.includes('fried rice')) {
+                          riceType = 'Fried Rice';
+                          riceClass = 'fried-rice';
+                        } else if (riceSub.includes('noodle')) {
+                          riceType = 'Noodles';
+                          riceClass = 'noodles';
+                        }
+                        
+                        if (riceType) {
+                          badges += `<span class="rice-type-badge ${riceClass}">${riceType}</span>`;
                         }
                       }
                       
@@ -10683,8 +10740,8 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                         });
                       }
                       if ((item.isUrbanBowl || (item.name && item.name.toLowerCase().includes('urban bowl'))) && 
-                          item.dumplingType) {
-                        const dumplingChoice = item.dumplingType.toLowerCase();
+                          (item.dumplingType || item.modifierDetails?.dumplingChoice)) {
+                        const dumplingChoice = (item.dumplingType || item.modifierDetails?.dumplingChoice || '').toLowerCase();
                         let dumplingProtein = '';
                         let dumplingClass = '';
                         
