@@ -538,27 +538,27 @@ transform: translateX(calc(100% - 50px));
 .otter-header {
 background: #0d0d0d;
 color: white;
-padding: 8px 12px;
+padding: 6px 10px;
 display: flex;
 align-items: center;
-gap: 8px;
+gap: 6px;
 flex-shrink: 0;
 border-bottom: 1px solid #333;
-height: 45px;
+height: 36px;
 position: relative;
 }
 
 .otter-clear-btn {
 position: absolute;
-right: 12px;
+right: 50px;
 top: 50%;
 transform: translateY(-50%);
 background: #dc3545;
 border: 1px solid #dc3545;
 color: white;
-font-size: 16px;
+font-size: 13px;
 cursor: pointer;
-padding: 4px 8px;
+padding: 3px 6px;
 border-radius: 4px;
 transition: all 0.2s ease;
 line-height: 1;
@@ -569,6 +569,28 @@ font-weight: 600;
 background: #b02a37;
 border-color: #b02a37;
 box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+.otter-close-btn {
+position: absolute;
+right: 8px;
+top: 50%;
+transform: translateY(-50%);
+background: #6c757d;
+border: none;
+color: white;
+font-size: 18px;
+cursor: pointer;
+padding: 2px 8px;
+border-radius: 4px;
+line-height: 1;
+transition: all 0.2s ease;
+font-weight: bold;
+}
+
+.otter-close-btn:hover {
+background: #5a6268;
+box-shadow: 0 2px 4px rgba(108, 117, 125, 0.3);
 }
 
 .otter-toggle {
@@ -595,7 +617,7 @@ border-radius: 4px;
 .otter-title {
 flex: 1;
 margin: 0;
-font-size: 16px;
+font-size: 14px;
 font-weight: 500;
 }
 
@@ -603,17 +625,17 @@ font-weight: 500;
 display: flex;
 flex-direction: column;
 align-items: flex-end;
-font-size: 12px;
+font-size: 10px;
 color: #a0a0a0;
 }
 
 .otter-prep-stats {
 display: flex;
-gap: 10px;
+gap: 6px;
 align-items: center;
-font-size: 11px;
+font-size: 10px;
 color: #888;
-margin-top: 4px;
+margin-top: 2px;
 }
 
 .prep-time-label {
@@ -673,7 +695,7 @@ border-color: #555;
 
 .batch-header {
 background: #333;
-padding: 8px 12px;
+padding: 5px 8px;
 display: flex;
 justify-content: space-between;
 align-items: center;
@@ -686,27 +708,28 @@ background: #2a2a2a;
 
 .batch-header h3 {
 margin: 0;
-font-size: 14px;
+font-size: 12px;
 font-weight: 500;
 color: #fff;
 }
 
 .batch-stats {
 display: flex;
-gap: 15px;
-font-size: 13px;
+gap: 8px;
+font-size: 11px;
 color: #aaa;
 align-items: center;
 }
 
 .est-completion {
-padding: 2px 8px;
+padding: 2px 6px;
 background: rgba(100, 100, 100, 0.3);
 border: 1px solid rgba(150, 150, 150, 0.4);
 border-radius: 3px;
 color: #ddd;
 font-weight: 500;
 cursor: help;
+font-size: 10px;
 }
 
 .est-completion.ready {
@@ -724,21 +747,21 @@ color: #ffc107;
 
 
 .batch-content {
-padding: 8px;
+padding: 6px;
 }
 
 /* Customer section styles */
 .batch-customers {
-margin-bottom: 10px;
-padding: 8px;
+margin-bottom: 6px;
+padding: 5px;
 background: rgba(0, 0, 0, 0.2);
 border-radius: 4px;
 }
 
 .batch-customers-header {
-font-size: 11px;
+font-size: 10px;
 color: #888;
-margin-bottom: 6px;
+margin-bottom: 4px;
 }
 
 .batch-customer-list {
@@ -751,12 +774,12 @@ gap: 4px;
 .batch-customer-badge {
 display: inline-flex;
 align-items: center;
-gap: 4px;
+gap: 3px;
 background: #404040;
-padding: 3px 8px;
-border-radius: 12px;
+padding: 2px 6px;
+border-radius: 10px;
 margin: 0;
-font-size: 11px;
+font-size: 10px;
 transition: all 0.3s ease;
 }
 
@@ -947,12 +970,12 @@ gap: 8px;
 }
 
 .wave-category {
-margin-bottom: 10px;
+margin-bottom: 6px;
 }
 
 .wave-category h6 {
-margin: 0 0 5px 0;
-font-size: 12px;
+margin: 0 0 3px 0;
+font-size: 10px;
 text-transform: uppercase;
 color: #7f8c8d;
 }
@@ -960,11 +983,11 @@ color: #7f8c8d;
 .wave-item {
 display: flex;
 align-items: center;
-gap: 8px;
-padding: 5px;
+gap: 4px;
+padding: 3px;
 background: white;
-border-radius: 4px;
-font-size: 13px;
+border-radius: 3px;
+font-size: 11px;
 position: relative;
 }
 .wave-item.packed {
@@ -1001,13 +1024,13 @@ background: #e74c3c;
 color: white;
 border: none;
 border-radius: 3px;
-width: 20px;
-height: 20px;
+width: 16px;
+height: 16px;
 cursor: pointer;
 display: flex;
 align-items: center;
 justify-content: center;
-font-size: 16px;
+font-size: 12px;
 line-height: 1;
 }
 
@@ -1033,35 +1056,35 @@ flex-shrink: 0;
 
 .otter-items {
 flex: 1;
-padding: 15px;
+padding: 8px;
 overflow-y: auto;
-font-size: 16px;
+font-size: 14px;
 }
 
 .size-section {
-margin-bottom: 25px;
-padding: 10px;
+margin-bottom: 12px;
+padding: 6px;
 background: #f0f0f0;
-border-radius: 8px;
+border-radius: 6px;
 }
 
 .size-header {
-margin: 0 0 15px 0;
-font-size: 16px;
+margin: 0 0 8px 0;
+font-size: 14px;
 font-weight: 700;
 color: #2c3e50;
 text-transform: uppercase;
-padding-bottom: 8px;
+padding-bottom: 4px;
 border-bottom: 2px solid #3498db;
 }
 
 .category-section {
-margin-bottom: 20px;
+margin-bottom: 10px;
 }
 
 .category-header {
-margin: 0 0 10px 0;
-font-size: 14px;
+margin: 0 0 6px 0;
+font-size: 12px;
 font-weight: 600;
 color: #2c3e50;
 text-transform: uppercase;
@@ -1070,18 +1093,18 @@ text-transform: uppercase;
 .item-list {
 display: flex;
 flex-direction: column;
-gap: 8px;
+gap: 4px;
 }
 
 .batch-item {
 display: flex;
 justify-content: space-between;
 align-items: center;
-padding: 12px;
+padding: 6px;
 background: #f8f9fa;
 border-radius: 4px;
 transition: background 0.2s;
-min-height: 48px;
+min-height: 32px;
 }
 
 .batch-item:hover {
@@ -1119,14 +1142,14 @@ flex: 1;
 .item-name {
 font-weight: 600;
 color: #2c3e50;
-font-size: 18px;
-line-height: 1.4;
+font-size: 14px;
+line-height: 1.2;
 }
 
 .item-quantity {
 font-weight: bold;
 color: #3498db;
-font-size: 18px;
+font-size: 14px;
 }
 
 /* Completed order styles */
@@ -1448,7 +1471,7 @@ margin-right: 10px;
 
 /* Category-specific styling */
 .category-section {
-margin-bottom: 20px;
+margin-bottom: 10px;
 }
 
 .category-section.hierarchical {
@@ -2063,7 +2086,7 @@ border-bottom: 2px solid #404040;
 }
 
 .wave-category-group {
-margin-bottom: 15px;
+margin-bottom: 8px;
 }
 
 /* Two column layout for items with wider sidebar */
@@ -2080,10 +2103,10 @@ gap: 10px;
 }
 
 .wave-category-header {
-font-size: 17px;
+font-size: 14px;
 font-weight: 600;
-margin: 0 0 10px 0;
-padding: 8px 12px;
+margin: 0 0 6px 0;
+padding: 4px 8px;
 color: #b0b0b0;
 background: rgba(255, 255, 255, 0.05);
 border-radius: 4px;
@@ -10213,10 +10236,10 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
     toggleVisibility() {
       const isVisible = this.overlayElement.style.display !== 'none';
       this.overlayElement.style.display = isVisible ? 'none' : 'flex';
-      
+
       // Save state
       chrome.storage.local.set({ consolidatorVisible: !isVisible });
-      
+
       // Adjust page layout
       if (isVisible) {
         // Hidden
@@ -10229,7 +10252,21 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         this.adjustPageLayout();
       }
     }
-  
+
+    closeOverlay() {
+      if (this.overlayElement) {
+        this.overlayElement.style.display = 'none';
+        // Save state
+        chrome.storage.local.set({ consolidatorVisible: false });
+        // Restore page layout
+        const mainContent = document.querySelector('[data-adjusted="true"]');
+        if (mainContent) {
+          mainContent.style.marginRight = '0';
+        }
+        this.showNotification('Consolidator closed', 'info');
+      }
+    }
+
     createOverlay() {
       // Inject CSS to handle page layout
       this.injectLayoutStyles();
@@ -10257,6 +10294,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
             <!-- API status will be inserted here -->
           </div>
           <button class="otter-clear-btn" title="Clear completed orders">🗑️ Clear Orders</button>
+          <button class="otter-close-btn" title="Close consolidator">✕</button>
         </div>
         
         <div class="otter-content">
@@ -10288,7 +10326,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       this.overlayElement.querySelector('.otter-toggle').addEventListener('click', () => {
         this.toggleCollapse();
       });
-      
+
       // Add clear button listener
       const clearBtn = this.overlayElement.querySelector('.otter-clear-btn');
       if (clearBtn) {
@@ -10297,14 +10335,26 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
           this.showNotification('Orders cleared', 'success');
         });
       }
-      
-      
+
+      // Add close button listener
+      const closeBtn = this.overlayElement.querySelector('.otter-close-btn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          this.closeOverlay();
+        });
+      }
+
       // Add keyboard shortcut listener
       document.addEventListener('keydown', (e) => {
         // Ctrl+Shift+O to toggle visibility
         if (e.ctrlKey && e.shiftKey && e.key === 'O') {
           e.preventDefault();
           this.toggleVisibility();
+        }
+        // Escape key to close overlay
+        if (e.key === 'Escape' && this.overlayElement && this.overlayElement.style.display !== 'none') {
+          e.preventDefault();
+          this.closeOverlay();
         }
       });
       
