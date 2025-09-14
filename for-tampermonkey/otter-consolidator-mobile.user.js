@@ -1,8 +1,14 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.7
+// @version      5.4.8
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.8: Fixed Horizontal Scrolling - See all columns:
+//         - Fixed 3-column grid with 200px width each
+//         - Total grid width 624px ensures scrolling
+//         - wave-size-group has overflow-x: auto
+//         - wave-items-list also scrolls horizontally
+//         - Can now scroll to see hidden third column
 // v5.4.7: Full Text Display - No truncation with scroll:
 //         - Removed ellipsis (...) - shows full item names
 //         - Grid columns expand to fit content (minmax(200px, max-content))
@@ -1940,7 +1946,7 @@ margin-left: 5px;
 .otter-wave-view {
 padding: 8px;
 overflow-y: auto;
-overflow-x: auto;
+overflow-x: hidden;
 height: 100%;
 -webkit-overflow-scrolling: touch;
 width: 100%;
@@ -2158,6 +2164,8 @@ overflow-x: auto;
 overflow-y: visible;
 -webkit-overflow-scrolling: touch;
 position: relative;
+width: 100%;
+max-width: 100%;
 }
 
 .wave-size-header {
@@ -2173,13 +2181,21 @@ border-bottom: 1px solid #404040;
 margin-bottom: 8px;
 }
 
-/* Three column layout with content-based sizing for horizontal scroll */
+/* Three column layout with fixed width for scrolling */
 .wave-items-wrapper {
 display: grid;
-grid-template-columns: repeat(3, minmax(200px, max-content));
+grid-template-columns: repeat(3, 200px);
 gap: 8px;
-width: max-content;
-min-width: 100%;
+width: 624px;
+overflow-x: visible;
+}
+
+.wave-items-list {
+overflow-x: auto;
+overflow-y: visible;
+-webkit-overflow-scrolling: touch;
+width: 100%;
+max-width: 100%;
 }
 
 .batch-content-wrapper {
