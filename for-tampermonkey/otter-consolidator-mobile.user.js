@@ -1,8 +1,14 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.1
+// @version      5.4.2
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.2: 3-Column Layout - Better space utilization:
+//         - Changed from 2-column to 3-column grid layout
+//         - Further reduced spacing and font sizes
+//         - Made badges much smaller (9px font)
+//         - Reduced all section padding and margins
+//         - Items now use minimal 24px height
 // v5.4.1: UI Improvements - Fixed close button and compacted interface:
 //         - Added dedicated close button (✕) to overlay header
 //         - Implemented Escape key support to close overlay
@@ -988,12 +994,13 @@ color: #7f8c8d;
 .wave-item {
 display: flex;
 align-items: center;
-gap: 4px;
-padding: 3px;
+gap: 2px;
+padding: 2px 4px;
 background: white;
-border-radius: 3px;
-font-size: 11px;
+border-radius: 2px;
+font-size: 10px;
 position: relative;
+min-height: 24px;
 }
 .wave-item.packed {
 background-color: #5cb85c !important;
@@ -1017,11 +1024,14 @@ transform: translateX(2px);
 
 .wave-item-name {
 flex: 1;
+font-size: 10px;
+line-height: 1.2;
 }
 
 .wave-item-qty {
 font-weight: bold;
 color: #3498db;
+font-size: 10px;
 }
 
 .remove-from-wave {
@@ -1866,7 +1876,7 @@ margin-left: 5px;
 
 /* Wave View Styles */
 .otter-wave-view {
-padding: 15px;
+padding: 8px;
 overflow-y: auto;
 height: 100%;
 }
@@ -2075,36 +2085,36 @@ background: #242424;
 }
 
 .wave-size-group {
-margin-bottom: 25px;
-padding: 15px;
+margin-bottom: 10px;
+padding: 8px;
 background: rgba(255, 255, 255, 0.02);
-border-radius: 6px;
+border-radius: 4px;
 }
 
 .wave-size-header {
-font-size: 16px;
+font-size: 13px;
 font-weight: 600;
 color: #ffffff;
-margin: 0 0 10px 0;
-padding-bottom: 5px;
-border-bottom: 2px solid #404040;
+margin: 0 0 6px 0;
+padding-bottom: 3px;
+border-bottom: 1px solid #404040;
 }
 
 .wave-category-group {
 margin-bottom: 8px;
 }
 
-/* Two column layout for items with wider sidebar */
+/* Three column layout for more compact display */
 .wave-items-wrapper {
 display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 15px;
+grid-template-columns: repeat(3, 1fr);
+gap: 8px;
 }
 
 .batch-content-wrapper {
 display: flex;
 flex-direction: column;
-gap: 10px;
+gap: 6px;
 }
 
 .wave-category-header {
@@ -3077,24 +3087,24 @@ background: #8e24aa; /* Purple for unknown */
 
 .dumpling-sauce-badge {
 display: inline-block;
-padding: 3px 10px;
+padding: 1px 4px;
 background: #e91e63;
 color: white;
-border-radius: 12px;
-font-size: 13px;
+border-radius: 8px;
+font-size: 9px;
 font-weight: 600;
-margin-left: 6px;
+margin-left: 3px;
 }
 
 /* Sauce Badges for Steak/Salmon */
 .sauce-badge {
 display: inline-block;
-padding: 3px 10px;
+padding: 1px 4px;
 color: white;
-border-radius: 12px;
-font-size: 13px;
+border-radius: 8px;
+font-size: 9px;
 font-weight: 600;
-margin-left: 6px;
+margin-left: 3px;
 }
 
 /* Specific sauce colors */
