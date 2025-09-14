@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.3
+// @version      5.4.4
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.4: Horizontal Scrolling - Fixed column cutoff:
+//         - Added horizontal scrolling to wave view
+//         - 3-column grid now has minimum width to prevent cutoff
+//         - Improved scrollbar visibility with blue color
+//         - Touch-friendly scrolling for mobile devices
 // v5.4.3: Vertical Stack Layout - Better readability:
 //         - Changed item layout to vertical stacking
 //         - Item name on top line with no wrapping (ellipsis for overflow)
@@ -1377,20 +1382,33 @@ animation: shake 0.5s ease-in-out;
 }
 
 ::-webkit-scrollbar {
-width: 6px;
+width: 8px;
+height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-background: #f1f1f1;
+background: rgba(241, 241, 241, 0.3);
+border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
 background: #888;
-border-radius: 3px;
+border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
 background: #555;
+}
+
+/* Horizontal scrollbar for wave view */
+.otter-wave-view::-webkit-scrollbar,
+.wave-size-group::-webkit-scrollbar {
+height: 10px;
+}
+
+.otter-wave-view::-webkit-scrollbar-thumb,
+.wave-size-group::-webkit-scrollbar-thumb {
+background: #3498db;
 }
 
 .otter-progress {
@@ -1888,7 +1906,9 @@ margin-left: 5px;
 .otter-wave-view {
 padding: 8px;
 overflow-y: auto;
+overflow-x: auto;
 height: 100%;
+-webkit-overflow-scrolling: touch;
 }
 
 .wave-section {
@@ -2099,6 +2119,8 @@ margin-bottom: 10px;
 padding: 8px;
 background: rgba(255, 255, 255, 0.02);
 border-radius: 4px;
+overflow-x: auto;
+-webkit-overflow-scrolling: touch;
 }
 
 .wave-size-header {
@@ -2114,11 +2136,13 @@ border-bottom: 1px solid #404040;
 margin-bottom: 8px;
 }
 
-/* Three column layout for more compact display */
+/* Three column layout with horizontal scroll */
 .wave-items-wrapper {
 display: grid;
-grid-template-columns: repeat(3, 1fr);
+grid-template-columns: repeat(3, minmax(140px, 1fr));
 gap: 8px;
+min-width: 420px;
+width: max-content;
 }
 
 .batch-content-wrapper {
