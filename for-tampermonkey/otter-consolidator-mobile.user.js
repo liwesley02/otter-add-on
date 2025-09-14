@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.5
+// @version      5.4.6
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.6: Restored 3-Column Layout - Fixed grid display:
+//         - Restored forced 3-column layout (was showing 2)
+//         - Fixed grid columns to use calc(33.33% - 6px)
+//         - Each size group now scrolls horizontally
+//         - Maintained proper spacing between columns
 // v5.4.5: Fixed Batch Capacity Input - Now editable:
 //         - Fixed Orders/batch input not being editable
 //         - Added better event handling (change, blur, Enter key)
@@ -1927,9 +1932,10 @@ margin-left: 5px;
 .otter-wave-view {
 padding: 8px;
 overflow-y: auto;
-overflow-x: auto;
+overflow-x: hidden;
 height: 100%;
 -webkit-overflow-scrolling: touch;
+width: 100%;
 }
 
 .wave-section {
@@ -2141,7 +2147,9 @@ padding: 8px;
 background: rgba(255, 255, 255, 0.02);
 border-radius: 4px;
 overflow-x: auto;
+overflow-y: visible;
 -webkit-overflow-scrolling: touch;
+position: relative;
 }
 
 .wave-size-header {
@@ -2157,13 +2165,13 @@ border-bottom: 1px solid #404040;
 margin-bottom: 8px;
 }
 
-/* Three column layout with horizontal scroll */
+/* Force three column layout with horizontal scroll */
 .wave-items-wrapper {
 display: grid;
-grid-template-columns: repeat(3, minmax(140px, 1fr));
+grid-template-columns: repeat(3, calc(33.33% - 6px));
 gap: 8px;
-min-width: 420px;
-width: max-content;
+width: 100%;
+min-width: 450px;
 }
 
 .batch-content-wrapper {
@@ -10712,7 +10720,7 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
           `;
         }
         
-        // Start two-column wrapper for items
+        // Start three-column wrapper for items with horizontal scroll
         html += `<div class="wave-items-wrapper">`;
         
         // Render items grouped by size
