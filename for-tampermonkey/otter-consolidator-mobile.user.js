@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.2
+// @version      5.4.3
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
-// v5.4.2: 3-Column Layout - Better space utilization:
-//         - Changed from 2-column to 3-column grid layout
-//         - Further reduced spacing and font sizes
-//         - Made badges much smaller (9px font)
-//         - Reduced all section padding and margins
-//         - Items now use minimal 24px height
+// v5.4.3: Vertical Stack Layout - Better readability:
+//         - Changed item layout to vertical stacking
+//         - Item name on top line with no wrapping (ellipsis for overflow)
+//         - Quantity and badges on second line
+//         - Color dots moved to top-right corner
+//         - Improved text readability without wrapping
 // v5.4.1: UI Improvements - Fixed close button and compacted interface:
 //         - Added dedicated close button (✕) to overlay header
 //         - Implemented Escape key support to close overlay
@@ -993,14 +993,15 @@ color: #7f8c8d;
 
 .wave-item {
 display: flex;
-align-items: center;
-gap: 2px;
-padding: 2px 4px;
+flex-direction: column;
+align-items: flex-start;
+padding: 4px 6px;
 background: white;
-border-radius: 2px;
+border-radius: 3px;
 font-size: 10px;
 position: relative;
-min-height: 24px;
+min-height: auto;
+gap: 2px;
 }
 .wave-item.packed {
 background-color: #5cb85c !important;
@@ -1023,15 +1024,21 @@ transform: translateX(2px);
 }
 
 .wave-item-name {
-flex: 1;
-font-size: 10px;
-line-height: 1.2;
+font-size: 11px;
+line-height: 1.3;
+font-weight: 600;
+color: #2c3e50;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+width: 100%;
 }
 
 .wave-item-qty {
 font-weight: bold;
 color: #3498db;
 font-size: 10px;
+margin-right: 4px;
 }
 
 .remove-from-wave {
@@ -1204,17 +1211,16 @@ display: none;
 /* Multiple order colors - dots */
 .order-color-dots {
 position: absolute;
-left: 4px;
-top: 50%;
-transform: translateY(-50%);
+right: 2px;
+top: 2px;
 display: flex;
-gap: 3px;
+gap: 2px;
 z-index: 1;
 }
 
 .order-color-dot {
-width: 8px;
-height: 8px;
+width: 6px;
+height: 6px;
 border-radius: 50%;
 border: 1px solid rgba(0, 0, 0, 0.2);
 box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -1233,8 +1239,12 @@ box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 .order-color-dot[data-color="9"] { background: #BCAAA4; }
 
 /* Adjust item spacing for consistent alignment */
-.wave-item .wave-item-quantity {
-margin-left: 25px;
+.wave-item .wave-item-details {
+display: flex;
+flex-wrap: wrap;
+align-items: center;
+gap: 4px;
+width: 100%;
 }
 
 /* Customer badge colors remain the same */
@@ -2181,11 +2191,13 @@ font-weight: 500;
 
 .wave-item-quantity {
 font-weight: bold;
-color: #808080;
-margin-right: 10px;
-min-width: 30px;
-padding-top: 2px;
-font-size: 18px;
+color: #3498db;
+margin-right: 4px;
+font-size: 11px;
+background: #e3f2fd;
+padding: 1px 4px;
+border-radius: 3px;
+display: inline-block;
 }
 
 .wave-item-name {
@@ -3090,10 +3102,10 @@ display: inline-block;
 padding: 1px 4px;
 background: #e91e63;
 color: white;
-border-radius: 8px;
+border-radius: 6px;
 font-size: 9px;
-font-weight: 600;
-margin-left: 3px;
+font-weight: 500;
+margin-left: 2px;
 }
 
 /* Sauce Badges for Steak/Salmon */
@@ -3101,10 +3113,10 @@ margin-left: 3px;
 display: inline-block;
 padding: 1px 4px;
 color: white;
-border-radius: 8px;
+border-radius: 6px;
 font-size: 9px;
-font-weight: 600;
-margin-left: 3px;
+font-weight: 500;
+margin-left: 2px;
 }
 
 /* Specific sauce colors */
@@ -10787,8 +10799,9 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 html += `
                   <li class="${itemClass} ${isWaveItemPacked ? 'packed' : ''}" data-item-id="${waveItemId}"${customerNames}>
                     ${colorDotsHtml}
-                    <span class="wave-item-quantity">${window.escapeHtml(item.batchQuantity || item.totalQuantity || 0)}x</span>
                     <span class="wave-item-name">${this.formatItemNameWithSauce(item.baseName || item.name, item)}</span>
+                    <div class="wave-item-details">
+                      <span class="wave-item-quantity">${window.escapeHtml(item.batchQuantity || item.totalQuantity || 0)}x</span>
                     ${item.size && item.size !== 'no-size' && item.size !== 'urban' ? (() => {
                       // Extract the actual size from compound values like "small - Garlic Butter Fried Rice Substitute"
                       const fullSizeText = item.size;
@@ -11034,7 +11047,8 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                       
                       return badges;
                     })()}
-                    ${maxElapsedTime > 0 ? `<span class="item-wait-time ${isOverdue ? 'overdue' : ''}">${window.escapeHtml(this.formatElapsedTime(maxElapsedTime))}</span>` : ''}
+                      ${maxElapsedTime > 0 ? `<span class="item-wait-time ${isOverdue ? 'overdue' : ''}">${window.escapeHtml(this.formatElapsedTime(maxElapsedTime))}</span>` : ''}
+                    </div>
                   </li>
                 `;
               });
