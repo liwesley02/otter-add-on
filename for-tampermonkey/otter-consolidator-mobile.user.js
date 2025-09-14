@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.4
+// @version      5.4.5
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.5: Fixed Batch Capacity Input - Now editable:
+//         - Fixed Orders/batch input not being editable
+//         - Added better event handling (change, blur, Enter key)
+//         - Improved input styling for mobile touch interaction
+//         - Removed readonly/disabled attributes and spin buttons
 // v5.4.4: Horizontal Scrolling - Fixed column cutoff:
 //         - Added horizontal scrolling to wave view
 //         - 3-column grid now has minimum width to prevent cutoff
@@ -894,20 +899,36 @@ color: #ccc;
 }
 
 .batch-capacity-input {
-width: 45px;
-padding: 3px 5px;
+width: 50px;
+padding: 5px 8px;
 background: #2a2a2a;
-border: 1px solid #444;
-border-radius: 3px;
+border: 2px solid #555;
+border-radius: 4px;
 color: #fff;
-font-size: 11px;
+font-size: 13px;
 text-align: center;
-height: 26px;
+height: 30px;
+cursor: pointer;
+-webkit-appearance: none;
+-moz-appearance: textfield;
 }
 
 .batch-capacity-input:focus {
 outline: none;
 border-color: #4a90e2;
+background: #333;
+}
+
+.batch-capacity-input:hover {
+border-color: #666;
+background: #333;
+}
+
+/* Remove spin buttons for better mobile experience */
+.batch-capacity-input::-webkit-inner-spin-button,
+.batch-capacity-input::-webkit-outer-spin-button {
+-webkit-appearance: none;
+margin: 0;
 }
 
 .save-indicator {
@@ -10450,8 +10471,9 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
         <div class="batch-controls">
           <div class="batch-capacity-control">
             <label for="batch-capacity">Orders/batch:</label>
-            <input type="number" id="batch-capacity" class="batch-capacity-input" 
-                   value="${this.batchManager.maxBatchCapacity}" min="1" max="20">
+            <input type="number" id="batch-capacity" class="batch-capacity-input"
+                   value="${this.batchManager.maxBatchCapacity}" min="1" max="20"
+                   autocomplete="off" inputmode="numeric">
           </div>
           <div class="debug-toggle" style="margin-left: auto;">
             <label style="display: flex; align-items: center; gap: 3px; font-size: 10px;">
@@ -10471,25 +10493,45 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
       // Move event listeners here since we're rendering controls separately
       const capacityInput = footerContainer.querySelector('#batch-capacity');
       if (capacityInput) {
-        capacityInput.addEventListener('change', async (e) => {
+        // Remove any readonly or disabled attributes that might have been set
+        capacityInput.removeAttribute('readonly');
+        capacityInput.removeAttribute('disabled');
+
+        // Handle both input and change events for better responsiveness
+        const handleCapacityChange = async (e) => {
           const newCapacity = parseInt(e.target.value);
           if (newCapacity > 0 && newCapacity <= 20) {
             await this.batchManager.updateMaxCapacity(newCapacity);
             this.showNotification(`Batch size set to ${newCapacity} orders`, 'success');
-            
+
             // Show save indicator
+            const existingIndicator = capacityInput.parentElement.querySelector('.save-indicator');
+            if (existingIndicator) {
+              existingIndicator.remove();
+            }
+
             const saveIndicator = document.createElement('span');
             saveIndicator.className = 'save-indicator';
             saveIndicator.textContent = '✓ Saved';
             saveIndicator.style.cssText = 'color: #5cb85c; margin-left: 10px; animation: fadeIn 0.3s;';
             capacityInput.parentElement.appendChild(saveIndicator);
-            
+
             // Remove indicator after 2 seconds
             setTimeout(() => saveIndicator.remove(), 2000);
-          } else {
-            // Reset to valid value
+          } else if (e.target.value !== '') {
+            // Reset to valid value if out of range
             capacityInput.value = this.batchManager.maxBatchCapacity;
             this.showNotification('Batch size must be between 1 and 20', 'error');
+          }
+        };
+
+        capacityInput.addEventListener('change', handleCapacityChange);
+        capacityInput.addEventListener('blur', handleCapacityChange);
+
+        // Also allow Enter key to save
+        capacityInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            handleCapacityChange(e);
           }
         });
       }
