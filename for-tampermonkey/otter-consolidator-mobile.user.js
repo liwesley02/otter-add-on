@@ -1,8 +1,14 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.6
+// @version      5.4.7
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.7: Full Text Display - No truncation with scroll:
+//         - Removed ellipsis (...) - shows full item names
+//         - Grid columns expand to fit content (minmax(200px, max-content))
+//         - Items and details expand to show full text
+//         - Horizontal scrolling to see all content
+//         - Text wraps naturally within expanded columns
 // v5.4.6: Restored 3-Column Layout - Fixed grid display:
 //         - Restored forced 3-column layout (was showing 2)
 //         - Fixed grid columns to use calc(33.33% - 6px)
@@ -1033,6 +1039,8 @@ font-size: 10px;
 position: relative;
 min-height: auto;
 gap: 2px;
+width: max-content;
+min-width: 100%;
 }
 .wave-item.packed {
 background-color: #5cb85c !important;
@@ -1059,10 +1067,10 @@ font-size: 11px;
 line-height: 1.3;
 font-weight: 600;
 color: #2c3e50;
-white-space: nowrap;
-overflow: hidden;
-text-overflow: ellipsis;
-width: 100%;
+white-space: normal;
+word-wrap: break-word;
+width: auto;
+max-width: none;
 }
 
 .wave-item-qty {
@@ -1272,10 +1280,10 @@ box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 /* Adjust item spacing for consistent alignment */
 .wave-item .wave-item-details {
 display: flex;
-flex-wrap: wrap;
+flex-wrap: nowrap;
 align-items: center;
 gap: 4px;
-width: 100%;
+width: auto;
 }
 
 /* Customer badge colors remain the same */
@@ -1932,7 +1940,7 @@ margin-left: 5px;
 .otter-wave-view {
 padding: 8px;
 overflow-y: auto;
-overflow-x: hidden;
+overflow-x: auto;
 height: 100%;
 -webkit-overflow-scrolling: touch;
 width: 100%;
@@ -2165,13 +2173,13 @@ border-bottom: 1px solid #404040;
 margin-bottom: 8px;
 }
 
-/* Force three column layout with horizontal scroll */
+/* Three column layout with content-based sizing for horizontal scroll */
 .wave-items-wrapper {
 display: grid;
-grid-template-columns: repeat(3, calc(33.33% - 6px));
+grid-template-columns: repeat(3, minmax(200px, max-content));
 gap: 8px;
-width: 100%;
-min-width: 450px;
+width: max-content;
+min-width: 100%;
 }
 
 .batch-content-wrapper {
