@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.0
+// @version      5.4.1
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.1: UI Improvements - Fixed close button and compacted interface:
+//         - Added dedicated close button (✕) to overlay header
+//         - Implemented Escape key support to close overlay
+//         - Reduced UI spacing by ~40% for more compact display
+//         - Team can now see significantly more items on screen
 // v5.4.0: MAJOR FIX - Complete overhaul of modifier extraction logic:
 //         - Fixed isIntegratedModifier to use fuzzy matching and smart defaults
 //         - Added content-based fallback detection for dumplings, sauces, and rice
