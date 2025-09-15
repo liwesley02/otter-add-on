@@ -1,8 +1,14 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.9
+// @version      5.4.10
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.10: Increased Column Width - Better text display:
+//         - Increased column width from 280px to 320px (total 984px)
+//         - Reduced font size from 18px to 13px for better fit
+//         - Fixed conflicting styles causing text cutoff
+//         - Improved word wrapping with hyphens and overflow-wrap
+//         - Ensured consistent styling across all wave items
 // v5.4.9: Fixed Overlay Scrolling - Accounting for overlay nature:
 //         - Changed main overlay from overflow:hidden to overflow-x:auto
 //         - otter-wave-view now has overflow-x:auto
@@ -500,7 +506,7 @@ position: fixed;
 top: 0;
 right: 0;
 width: 40vw;
-min-width: 800px;
+min-width: 1000px;
 max-width: 1200px;
 height: 100vh;
 background: #1a1a1a;
@@ -1047,15 +1053,15 @@ color: #7f8c8d;
 display: flex;
 flex-direction: column;
 align-items: flex-start;
-padding: 4px 6px;
+padding: 6px 8px;
 background: white;
 border-radius: 3px;
 font-size: 10px;
 position: relative;
 min-height: auto;
-gap: 2px;
-width: max-content;
-min-width: 100%;
+gap: 3px;
+width: 100%;
+box-sizing: border-box;
 }
 .wave-item.packed {
 background-color: #5cb85c !important;
@@ -1078,14 +1084,18 @@ transform: translateX(2px);
 }
 
 .wave-item-name {
-font-size: 11px;
+font-size: 13px;
 line-height: 1.3;
 font-weight: 600;
 color: #2c3e50;
 white-space: normal;
 word-wrap: break-word;
-width: auto;
-max-width: none;
+word-break: normal;
+width: 100%;
+max-width: 100%;
+display: block;
+overflow-wrap: break-word;
+hyphens: auto;
 }
 
 .wave-item-qty {
@@ -2190,12 +2200,12 @@ border-bottom: 1px solid #404040;
 margin-bottom: 8px;
 }
 
-/* Three column layout with fixed width for scrolling */
+/* Three column layout with wider columns for full text */
 .wave-items-wrapper {
 display: grid;
-grid-template-columns: repeat(3, 200px);
+grid-template-columns: repeat(3, 320px);
 gap: 8px;
-width: 624px;
+width: 984px;
 overflow-x: visible;
 }
 
@@ -2204,7 +2214,6 @@ overflow-x: auto;
 overflow-y: visible;
 -webkit-overflow-scrolling: touch;
 width: 100%;
-max-width: 100%;
 }
 
 .batch-content-wrapper {
@@ -2232,14 +2241,16 @@ margin: 0;
 .wave-item {
 display: flex;
 align-items: flex-start;
-padding: 8px 12px;
+padding: 6px 10px;
 background: #333;
 margin-bottom: 4px;
 border-radius: 3px;
 color: #e0e0e0;
 position: relative;
-font-size: 16px;
-min-height: 36px;
+font-size: 12px;
+min-height: 32px;
+max-width: 100%;
+box-sizing: border-box;
 }
 
 .wave-item.overdue {
@@ -2290,10 +2301,15 @@ display: inline-block;
 flex: 1;
 color: #ffffff;
 word-wrap: break-word;
-line-height: 1.4;
-padding-right: 10px;
-font-size: 18px;
+word-break: normal;
+line-height: 1.3;
+padding-right: 8px;
+font-size: 13px;
 font-weight: 600;
+min-width: 0;
+max-width: 100%;
+overflow-wrap: break-word;
+hyphens: auto;
 }
 
 .size-estimated {
