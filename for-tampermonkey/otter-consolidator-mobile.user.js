@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.14
+// @version      5.4.15
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.15: Fixed Quantity Visibility - Better contrast:
+//         - Darker quantity text color for better readability
+//         - Changed from light blue to dark blue/black
+//         - Improved background contrast for quantity badges
+//         - Better visibility for all quantity indicators
 // v5.4.14: Improved Category Readability - Better contrast:
 //         - Darker, more saturated gradient colors for better contrast
 //         - All categories now readable with white text
@@ -1121,7 +1126,7 @@ hyphens: auto;
 
 .wave-item-qty {
 font-weight: bold;
-color: #3498db;
+color: #1a1a1a;
 font-size: 10px;
 margin-right: 4px;
 }
@@ -2404,13 +2409,14 @@ font-weight: 500;
 
 .wave-item-quantity {
 font-weight: bold;
-color: #3498db;
+color: #1a1a1a;
 margin-right: 4px;
 font-size: 11px;
-background: #e3f2fd;
-padding: 1px 4px;
+background: #ffffff;
+padding: 2px 5px;
 border-radius: 3px;
 display: inline-block;
+border: 1px solid #cccccc;
 }
 
 .wave-item-name {
