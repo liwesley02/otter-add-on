@@ -1,8 +1,14 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.17
+// @version      6.0.0
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v6.0.0: MAJOR UPDATE - Protein-First Categorization:
+//         - Complete restructure: Items grouped by protein type FIRST
+//         - All crispy chicken items together (rice bowls, urban bowls, baos, etc.)
+//         - All grilled chicken items together regardless of dish type
+//         - Much faster sorting and packing process
+//         - Previous category-first version backed up as v5.4.17
 // v5.4.17: Improved Rice Bowl Categorization - Sauce-specific groups:
 //         - Rice bowls now grouped by protein AND sauce type
 //         - Each sauce variation gets its own category
@@ -10930,41 +10936,48 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 subcategoryName: item.categoryInfo && item.categoryInfo.subcategoryName
               });
               
-              // Use categoryInfo if available - this should be the source of truth
-              if (item.categoryInfo) {
-                // For rice bowls, include both protein and sauce in the group name
-                if (item.categoryInfo.topCategory === 'riceBowls' && item.categoryInfo.subCategoryName) {
-                  // Check if there's a sauce to include
-                  const sauce = item.categoryInfo.sauce || item.categoryInfo.sauceType ||
-                               item.modifierDetails?.sauce || item.sauceType || '';
+              // PROTEIN-FIRST CATEGORIZATION - Group by protein type regardless of dish type
+              const itemNameLower = (item.name || '').toLowerCase();
 
-                  if (sauce) {
-                    // Create specific protein + sauce group (e.g., "Crispy Chicken Herb Aioli Rice Bowls")
-                    proteinGroup = `${item.categoryInfo.subCategoryName} ${sauce} Rice Bowls`;
-                  } else {
-                    // No sauce specified, just use protein type
-                    proteinGroup = `${item.categoryInfo.subCategoryName} Rice Bowls`;
-                  }
-                } else if (item.categoryInfo.topCategoryName) {
-                  // For other categories, use the top category name
-                  proteinGroup = item.categoryInfo.topCategoryName;
-                } else {
-                  proteinGroup = 'Other';
-                }
+              // Extract protein type from item name or categoryInfo
+              if (itemNameLower.includes('crispy chicken') || itemNameLower.includes('crispy chick')) {
+                proteinGroup = 'Crispy Chicken';
+              } else if (itemNameLower.includes('grilled chicken') || itemNameLower.includes('grilled chick')) {
+                proteinGroup = 'Grilled Chicken';
+              } else if (itemNameLower.includes('orange chicken')) {
+                proteinGroup = 'Orange Chicken';
+              } else if (itemNameLower.includes('bulgogi') || itemNameLower.includes('steak')) {
+                proteinGroup = 'Steak/Bulgogi';
+              } else if (itemNameLower.includes('salmon')) {
+                proteinGroup = 'Salmon';
+              } else if (itemNameLower.includes('shrimp')) {
+                proteinGroup = 'Shrimp';
+              } else if (itemNameLower.includes('pork')) {
+                proteinGroup = 'Pork';
+              } else if (itemNameLower.includes('fish')) {
+                proteinGroup = 'Fish';
+              } else if (itemNameLower.includes('tofu')) {
+                proteinGroup = 'Tofu';
+              } else if (itemNameLower.includes('cauliflower')) {
+                proteinGroup = 'Cauliflower';
+              } else if (itemNameLower.includes('dumpling')) {
+                // Dumplings stay as their own category
+                proteinGroup = 'Dumplings';
+              } else if (itemNameLower.includes('crab rangoon') || itemNameLower.includes('rangoon')) {
+                proteinGroup = 'Appetizers';
+              } else if (itemNameLower.includes('drink') || itemNameLower.includes('tea') ||
+                         itemNameLower.includes('soda') || itemNameLower.includes('lemonade')) {
+                proteinGroup = 'Drinks';
+              } else if (item.categoryInfo && item.categoryInfo.subCategoryName &&
+                         item.categoryInfo.subCategoryName !== 'Other' &&
+                         item.categoryInfo.subCategoryName !== 'General') {
+                // Use subcategory from categoryInfo if available
+                proteinGroup = item.categoryInfo.subCategoryName;
+              } else if (item.categoryInfo && item.categoryInfo.topCategoryName) {
+                // Fall back to top category
+                proteinGroup = item.categoryInfo.topCategoryName;
               } else {
-                // Fallback for missing categoryInfo
-                console.warn('[Overlay] Item missing categoryInfo:', item);
-                // Try to determine category from item name
-                const itemNameLower = (item.name || '').toLowerCase();
-                if (itemNameLower.includes('rice bowl')) {
-                  proteinGroup = 'Rice Bowls';
-                } else if (itemNameLower.includes('urban bowl')) {
-                  proteinGroup = 'Urban Bowls';
-                } else if (itemNameLower.includes('dumpling')) {
-                  proteinGroup = 'Dumplings';
-                } else {
-                  proteinGroup = 'Other';
-                }
+                proteinGroup = 'Other';
               }
               
               if (!byProtein[proteinGroup]) {
@@ -10980,40 +10993,30 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 return;
               }
               
-              // Determine category type for color coding
+              // Determine category type for color coding based on protein group
               let categoryType = 'other';
               const groupLower = proteinGroup.toLowerCase();
 
-              // Check for specific categories with priority order
-              // Rice bowl variations with sauce are still categorized by protein type
-              if (groupLower.includes('crispy chicken') && groupLower.includes('rice bowl')) categoryType = 'crispy-rice-bowls';
-              else if (groupLower.includes('grilled chicken') && groupLower.includes('rice bowl')) categoryType = 'grilled-rice-bowls';
-              else if (groupLower.includes('cauliflower') && groupLower.includes('rice bowl')) categoryType = 'cauliflower';
-              else if (groupLower.includes('shrimp') && groupLower.includes('rice bowl')) categoryType = 'shrimp';
-              else if (groupLower.includes('steak') && groupLower.includes('rice bowl')) categoryType = 'steak';
-              else if (groupLower.includes('salmon') && groupLower.includes('rice bowl')) categoryType = 'salmon';
-              else if (groupLower.includes('tofu') && groupLower.includes('rice bowl')) categoryType = 'tofu';
-              else if (groupLower.includes('pork') && groupLower.includes('rice bowl')) categoryType = 'pork';
-              else if (groupLower.includes('rice bowl')) categoryType = 'rice-bowls';
-              else if (groupLower.includes('urban bowl')) categoryType = 'urban-bowls';
-              else if (groupLower.includes('fried rice')) categoryType = 'fried-rice';
-              else if (groupLower.includes('dumpling')) categoryType = 'dumplings';
-              else if (groupLower.includes('drink') || groupLower.includes('beverage')) categoryType = 'drinks';
-              else if (groupLower.includes('grilled') && !groupLower.includes('rice bowl')) categoryType = 'grilled';
-              else if (groupLower.includes('crispy') && !groupLower.includes('rice bowl')) categoryType = 'crispy';
-              else if (groupLower.includes('cauliflower')) categoryType = 'cauliflower';
+              // Map protein groups to color categories
+              if (groupLower === 'crispy chicken') categoryType = 'crispy-rice-bowls';
+              else if (groupLower === 'grilled chicken') categoryType = 'grilled-rice-bowls';
+              else if (groupLower === 'orange chicken') categoryType = 'chicken';
+              else if (groupLower === 'steak/bulgogi' || groupLower.includes('steak')) categoryType = 'steak';
+              else if (groupLower === 'salmon') categoryType = 'salmon';
+              else if (groupLower === 'shrimp') categoryType = 'shrimp';
+              else if (groupLower === 'pork') categoryType = 'pork';
+              else if (groupLower === 'fish') categoryType = 'salmon';
+              else if (groupLower === 'tofu') categoryType = 'tofu';
+              else if (groupLower === 'cauliflower') categoryType = 'cauliflower';
+              else if (groupLower === 'dumplings') categoryType = 'dumplings';
+              else if (groupLower === 'drinks') categoryType = 'drinks';
+              else if (groupLower === 'appetizers') categoryType = 'appetizers';
               else if (groupLower.includes('noodle')) categoryType = 'noodles';
+              else if (groupLower.includes('rice') && !groupLower.includes('chicken')) categoryType = 'fried-rice';
               else if (groupLower.includes('side')) categoryType = 'sides';
-              else if (groupLower.includes('appetizer')) categoryType = 'appetizers';
               else if (groupLower.includes('dessert')) categoryType = 'desserts';
-              else if (groupLower.includes('shrimp')) categoryType = 'shrimp';
-              else if (groupLower.includes('steak') || groupLower.includes('beef')) categoryType = 'steak';
-              else if (groupLower.includes('salmon') || groupLower.includes('fish')) categoryType = 'salmon';
-              else if (groupLower.includes('tofu') || groupLower.includes('vegetarian')) categoryType = 'tofu';
-              else if (groupLower.includes('pork')) categoryType = 'pork';
-              else if (groupLower.includes('chicken') && !groupLower.includes('crispy') && !groupLower.includes('grilled')) categoryType = 'chicken';
-              else if (groupLower.includes('uncategorized')) categoryType = 'uncategorized';
-              else if (groupLower.includes('other')) categoryType = 'other';
+              else if (groupLower === 'other') categoryType = 'other';
+              else categoryType = 'uncategorized';
 
               html += `
                 <div class="wave-category-group">
