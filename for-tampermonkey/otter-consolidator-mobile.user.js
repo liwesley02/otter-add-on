@@ -1,8 +1,12 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      6.0.0
+// @version      6.0.1
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v6.0.1: Fixed Orange Chicken categorization:
+//         - Orange Chicken now correctly grouped under Crispy Chicken
+//         - Orange is a sauce, not a protein type
+//         - Grilled Orange items go under Grilled Chicken
 // v6.0.0: MAJOR UPDATE - Protein-First Categorization:
 //         - Complete restructure: Items grouped by protein type FIRST
 //         - All crispy chicken items together (rice bowls, urban bowls, baos, etc.)
@@ -10940,12 +10944,16 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               const itemNameLower = (item.name || '').toLowerCase();
 
               // Extract protein type from item name or categoryInfo
-              if (itemNameLower.includes('crispy chicken') || itemNameLower.includes('crispy chick')) {
+              // Note: Orange is a sauce, not a protein - check if it's grilled or crispy
+              if (itemNameLower.includes('grilled') && itemNameLower.includes('orange')) {
+                proteinGroup = 'Grilled Chicken';
+              } else if (itemNameLower.includes('orange') && itemNameLower.includes('chicken')) {
+                // Orange chicken is typically crispy
+                proteinGroup = 'Crispy Chicken';
+              } else if (itemNameLower.includes('crispy chicken') || itemNameLower.includes('crispy chick')) {
                 proteinGroup = 'Crispy Chicken';
               } else if (itemNameLower.includes('grilled chicken') || itemNameLower.includes('grilled chick')) {
                 proteinGroup = 'Grilled Chicken';
-              } else if (itemNameLower.includes('orange chicken')) {
-                proteinGroup = 'Orange Chicken';
               } else if (itemNameLower.includes('bulgogi') || itemNameLower.includes('steak')) {
                 proteinGroup = 'Steak/Bulgogi';
               } else if (itemNameLower.includes('salmon')) {
@@ -11000,7 +11008,6 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               // Map protein groups to color categories
               if (groupLower === 'crispy chicken') categoryType = 'crispy-rice-bowls';
               else if (groupLower === 'grilled chicken') categoryType = 'grilled-rice-bowls';
-              else if (groupLower === 'orange chicken') categoryType = 'chicken';
               else if (groupLower === 'steak/bulgogi' || groupLower.includes('steak')) categoryType = 'steak';
               else if (groupLower === 'salmon') categoryType = 'salmon';
               else if (groupLower === 'shrimp') categoryType = 'shrimp';
