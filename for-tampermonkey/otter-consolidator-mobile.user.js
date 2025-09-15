@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.12
+// @version      5.4.13
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.13: Enhanced Category Colors - Complete coverage:
+//         - Added colors for all category types found in the app
+//         - Urban Bowls, Fried Rice, Shrimp, Steak, Salmon categories
+//         - Better differentiation between similar categories
+//         - More specific category detection logic
 // v5.4.12: Colorful Category Headers - Better visual distinction:
 //         - Added vibrant gradient colors to category headers
 //         - Each category gets unique color scheme
@@ -2294,6 +2299,52 @@ background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
 
 .wave-category-header[data-category="appetizers"] {
 background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+}
+
+/* Rice Bowl Variations */
+.wave-category-header[data-category="crispy-rice-bowls"] {
+background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+}
+
+.wave-category-header[data-category="grilled-rice-bowls"] {
+background: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
+}
+
+.wave-category-header[data-category="urban-bowls"] {
+background: linear-gradient(135deg, #6c5ce7 0%, #74b9ff 100%);
+}
+
+.wave-category-header[data-category="fried-rice"] {
+background: linear-gradient(135deg, #fab1a0 0%, #ff7675 100%);
+}
+
+/* Protein Categories */
+.wave-category-header[data-category="shrimp"] {
+background: linear-gradient(135deg, #ff9ff3 0%, #feca57 100%);
+}
+
+.wave-category-header[data-category="steak"] {
+background: linear-gradient(135deg, #8b4513 0%, #d2691e 100%);
+}
+
+.wave-category-header[data-category="salmon"] {
+background: linear-gradient(135deg, #ff6348 0%, #ffa502 100%);
+}
+
+.wave-category-header[data-category="tofu"] {
+background: linear-gradient(135deg, #7bed9f 0%, #2ed573 100%);
+}
+
+.wave-category-header[data-category="pork"] {
+background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+}
+
+.wave-category-header[data-category="chicken"] {
+background: linear-gradient(135deg, #f8b500 0%, #fceabb 100%);
+}
+
+.wave-category-header[data-category="desserts"] {
+background: linear-gradient(135deg, #ee9ca7 0%, #ffdde1 100%);
 }
 
 .wave-item-list {
@@ -10902,17 +10953,30 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               // Determine category type for color coding
               let categoryType = 'other';
               const groupLower = proteinGroup.toLowerCase();
-              if (groupLower.includes('rice bowl')) categoryType = 'rice-bowls';
+
+              // Check for specific categories with priority order
+              if (groupLower.includes('crispy') && groupLower.includes('rice bowl')) categoryType = 'crispy-rice-bowls';
+              else if (groupLower.includes('grilled') && groupLower.includes('rice bowl')) categoryType = 'grilled-rice-bowls';
+              else if (groupLower.includes('rice bowl')) categoryType = 'rice-bowls';
+              else if (groupLower.includes('urban bowl')) categoryType = 'urban-bowls';
+              else if (groupLower.includes('fried rice')) categoryType = 'fried-rice';
               else if (groupLower.includes('dumpling')) categoryType = 'dumplings';
-              else if (groupLower.includes('drink')) categoryType = 'drinks';
-              else if (groupLower.includes('grilled')) categoryType = 'grilled';
-              else if (groupLower.includes('crispy')) categoryType = 'crispy';
+              else if (groupLower.includes('drink') || groupLower.includes('beverage')) categoryType = 'drinks';
+              else if (groupLower.includes('grilled') && !groupLower.includes('rice bowl')) categoryType = 'grilled';
+              else if (groupLower.includes('crispy') && !groupLower.includes('rice bowl')) categoryType = 'crispy';
               else if (groupLower.includes('cauliflower')) categoryType = 'cauliflower';
-              else if (groupLower.includes('other')) categoryType = 'other';
-              else if (groupLower.includes('uncategorized')) categoryType = 'uncategorized';
               else if (groupLower.includes('noodle')) categoryType = 'noodles';
               else if (groupLower.includes('side')) categoryType = 'sides';
               else if (groupLower.includes('appetizer')) categoryType = 'appetizers';
+              else if (groupLower.includes('dessert')) categoryType = 'desserts';
+              else if (groupLower.includes('shrimp')) categoryType = 'shrimp';
+              else if (groupLower.includes('steak') || groupLower.includes('beef')) categoryType = 'steak';
+              else if (groupLower.includes('salmon') || groupLower.includes('fish')) categoryType = 'salmon';
+              else if (groupLower.includes('tofu') || groupLower.includes('vegetarian')) categoryType = 'tofu';
+              else if (groupLower.includes('pork')) categoryType = 'pork';
+              else if (groupLower.includes('chicken') && !groupLower.includes('crispy') && !groupLower.includes('grilled')) categoryType = 'chicken';
+              else if (groupLower.includes('uncategorized')) categoryType = 'uncategorized';
+              else if (groupLower.includes('other')) categoryType = 'other';
 
               html += `
                 <div class="wave-category-group">
