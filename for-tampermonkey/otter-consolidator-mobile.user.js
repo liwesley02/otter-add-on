@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.16
+// @version      5.4.17
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.17: Improved Rice Bowl Categorization - Sauce-specific groups:
+//         - Rice bowls now grouped by protein AND sauce type
+//         - Each sauce variation gets its own category
+//         - Faster, more specific categorization
+//         - E.g., "Crispy Chicken Herb Aioli Rice Bowls" instead of just "Crispy Chicken Rice Bowls"
 // v5.4.16: Enhanced Quantity Display - Larger and bolder:
 //         - Increased font size from 11px to 14px
 //         - Made font extra bold (900 weight)
@@ -10927,9 +10932,19 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               
               // Use categoryInfo if available - this should be the source of truth
               if (item.categoryInfo) {
-                // For rice bowls, use the subcategory (protein) name
+                // For rice bowls, include both protein and sauce in the group name
                 if (item.categoryInfo.topCategory === 'riceBowls' && item.categoryInfo.subCategoryName) {
-                  proteinGroup = `${item.categoryInfo.subCategoryName} Rice Bowls`;
+                  // Check if there's a sauce to include
+                  const sauce = item.categoryInfo.sauce || item.categoryInfo.sauceType ||
+                               item.modifierDetails?.sauce || item.sauceType || '';
+
+                  if (sauce) {
+                    // Create specific protein + sauce group (e.g., "Crispy Chicken Herb Aioli Rice Bowls")
+                    proteinGroup = `${item.categoryInfo.subCategoryName} ${sauce} Rice Bowls`;
+                  } else {
+                    // No sauce specified, just use protein type
+                    proteinGroup = `${item.categoryInfo.subCategoryName} Rice Bowls`;
+                  }
                 } else if (item.categoryInfo.topCategoryName) {
                   // For other categories, use the top category name
                   proteinGroup = item.categoryInfo.topCategoryName;
@@ -10970,8 +10985,15 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
               const groupLower = proteinGroup.toLowerCase();
 
               // Check for specific categories with priority order
-              if (groupLower.includes('crispy') && groupLower.includes('rice bowl')) categoryType = 'crispy-rice-bowls';
-              else if (groupLower.includes('grilled') && groupLower.includes('rice bowl')) categoryType = 'grilled-rice-bowls';
+              // Rice bowl variations with sauce are still categorized by protein type
+              if (groupLower.includes('crispy chicken') && groupLower.includes('rice bowl')) categoryType = 'crispy-rice-bowls';
+              else if (groupLower.includes('grilled chicken') && groupLower.includes('rice bowl')) categoryType = 'grilled-rice-bowls';
+              else if (groupLower.includes('cauliflower') && groupLower.includes('rice bowl')) categoryType = 'cauliflower';
+              else if (groupLower.includes('shrimp') && groupLower.includes('rice bowl')) categoryType = 'shrimp';
+              else if (groupLower.includes('steak') && groupLower.includes('rice bowl')) categoryType = 'steak';
+              else if (groupLower.includes('salmon') && groupLower.includes('rice bowl')) categoryType = 'salmon';
+              else if (groupLower.includes('tofu') && groupLower.includes('rice bowl')) categoryType = 'tofu';
+              else if (groupLower.includes('pork') && groupLower.includes('rice bowl')) categoryType = 'pork';
               else if (groupLower.includes('rice bowl')) categoryType = 'rice-bowls';
               else if (groupLower.includes('urban bowl')) categoryType = 'urban-bowls';
               else if (groupLower.includes('fried rice')) categoryType = 'fried-rice';
