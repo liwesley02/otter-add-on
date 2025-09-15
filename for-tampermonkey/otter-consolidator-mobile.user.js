@@ -1,8 +1,14 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.10
+// @version      5.4.11
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.11: Adjusted Overlay Position - Prevent content overlap:
+//         - Reduced overlay width from 40vw to 35vw
+//         - Changed min-width from 1000px to 850px
+//         - Adjusted column widths from 320px to 270px
+//         - Total grid width now 830px to fit narrower overlay
+//         - Ensures left side content remains visible
 // v5.4.10: Increased Column Width - Better text display:
 //         - Increased column width from 280px to 320px (total 984px)
 //         - Reduced font size from 18px to 13px for better fit
@@ -505,9 +511,9 @@
 position: fixed;
 top: 0;
 right: 0;
-width: 40vw;
-min-width: 1000px;
-max-width: 1200px;
+width: 35vw;
+min-width: 850px;
+max-width: 950px;
 height: 100vh;
 background: #1a1a1a;
 box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
@@ -2200,12 +2206,12 @@ border-bottom: 1px solid #404040;
 margin-bottom: 8px;
 }
 
-/* Three column layout with wider columns for full text */
+/* Three column layout with adjusted columns for narrower overlay */
 .wave-items-wrapper {
 display: grid;
-grid-template-columns: repeat(3, 320px);
+grid-template-columns: repeat(3, 270px);
 gap: 8px;
-width: 984px;
+width: 830px;
 overflow-x: visible;
 }
 
