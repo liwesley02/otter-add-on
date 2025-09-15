@@ -1,8 +1,14 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.8
+// @version      5.4.9
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.9: Fixed Overlay Scrolling - Accounting for overlay nature:
+//         - Changed main overlay from overflow:hidden to overflow-x:auto
+//         - otter-wave-view now has overflow-x:auto
+//         - Fixed overlay container to allow horizontal scrolling
+//         - Recognized this is an overlay app, not standalone
+//         - Scrolling now works within the overlay sidebar
 // v5.4.8: Fixed Horizontal Scrolling - See all columns:
 //         - Fixed 3-column grid with 200px width each
 //         - Total grid width 624px ensures scrolling
@@ -506,7 +512,8 @@ transition: transform 0.3s ease;
 display: flex;
 flex-direction: column;
 color: #ffffff;
-overflow: hidden;
+overflow-x: auto;
+overflow-y: hidden;
 }
 
 /* Ensure the main Otter content is properly adjusted */
@@ -700,9 +707,11 @@ border-color: rgba(0, 200, 0, 0.5);
 .otter-content {
 flex: 1;
 overflow-y: auto;
+overflow-x: hidden;
 display: flex;
 flex-direction: column;
 background: #1a1a1a;
+width: 100%;
 }
 
 /* Batch System Styles */
@@ -1946,7 +1955,7 @@ margin-left: 5px;
 .otter-wave-view {
 padding: 8px;
 overflow-y: auto;
-overflow-x: hidden;
+overflow-x: auto;
 height: 100%;
 -webkit-overflow-scrolling: touch;
 width: 100%;
