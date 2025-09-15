@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.13
+// @version      5.4.14
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.14: Improved Category Readability - Better contrast:
+//         - Darker, more saturated gradient colors for better contrast
+//         - All categories now readable with white text
+//         - Consistent color coding maintained
+//         - Better visual hierarchy and accessibility
 // v5.4.13: Enhanced Category Colors - Complete coverage:
 //         - Added colors for all category types found in the app
 //         - Urban Bowls, Fried Rice, Shrimp, Steak, Salmon categories
@@ -2252,99 +2257,95 @@ box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* Dynamic category colors */
+/* Dynamic category colors - Darker for better contrast */
 .wave-category-header[data-category="rice-bowls"] {
-background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+background: linear-gradient(135deg, #d63031 0%, #e17055 100%);
 }
 
 .wave-category-header[data-category="dumplings"] {
-background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+background: linear-gradient(135deg, #5f27cd 0%, #341f97 100%);
 }
 
 .wave-category-header[data-category="drinks"] {
-background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+background: linear-gradient(135deg, #0984e3 0%, #00b894 100%);
 }
 
 .wave-category-header[data-category="grilled"] {
-background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
 }
 
 .wave-category-header[data-category="crispy"] {
-background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+background: linear-gradient(135deg, #e91e63 0%, #c2185b 100%);
 }
 
 .wave-category-header[data-category="cauliflower"] {
-background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+background: linear-gradient(135deg, #27ae60 0%, #16a085 100%);
 }
 
 .wave-category-header[data-category="other"] {
-background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
-color: #2c3e50;
-text-shadow: none;
+background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
 }
 
 .wave-category-header[data-category="uncategorized"] {
-background: linear-gradient(135deg, #c3cfe2 0%, #c3cfe2 100%);
-color: #2c3e50;
-text-shadow: none;
+background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
 }
 
 .wave-category-header[data-category="noodles"] {
-background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+background: linear-gradient(135deg, #d63031 0%, #ff6b6b 100%);
 }
 
 .wave-category-header[data-category="sides"] {
-background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
+background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
 }
 
 .wave-category-header[data-category="appetizers"] {
-background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
 }
 
-/* Rice Bowl Variations */
+/* Rice Bowl Variations - Distinct darker colors */
 .wave-category-header[data-category="crispy-rice-bowls"] {
-background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
 }
 
 .wave-category-header[data-category="grilled-rice-bowls"] {
-background: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
+background: linear-gradient(135deg, #d35400 0%, #f39c12 100%);
 }
 
 .wave-category-header[data-category="urban-bowls"] {
-background: linear-gradient(135deg, #6c5ce7 0%, #74b9ff 100%);
+background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);
 }
 
 .wave-category-header[data-category="fried-rice"] {
-background: linear-gradient(135deg, #fab1a0 0%, #ff7675 100%);
+background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
 }
 
-/* Protein Categories */
+/* Protein Categories - Saturated colors */
 .wave-category-header[data-category="shrimp"] {
-background: linear-gradient(135deg, #ff9ff3 0%, #feca57 100%);
+background: linear-gradient(135deg, #e91e63 0%, #ad1457 100%);
 }
 
 .wave-category-header[data-category="steak"] {
-background: linear-gradient(135deg, #8b4513 0%, #d2691e 100%);
+background: linear-gradient(135deg, #6d4c41 0%, #8d6e63 100%);
 }
 
 .wave-category-header[data-category="salmon"] {
-background: linear-gradient(135deg, #ff6348 0%, #ffa502 100%);
+background: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);
 }
 
 .wave-category-header[data-category="tofu"] {
-background: linear-gradient(135deg, #7bed9f 0%, #2ed573 100%);
+background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
 }
 
 .wave-category-header[data-category="pork"] {
-background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+background: linear-gradient(135deg, #c2185b 0%, #880e4f 100%);
 }
 
 .wave-category-header[data-category="chicken"] {
-background: linear-gradient(135deg, #f8b500 0%, #fceabb 100%);
+background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
 }
 
 .wave-category-header[data-category="desserts"] {
-background: linear-gradient(135deg, #ee9ca7 0%, #ffdde1 100%);
+background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
 }
 
 .wave-item-list {
