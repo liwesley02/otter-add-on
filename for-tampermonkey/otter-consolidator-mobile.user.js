@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.15
+// @version      5.4.16
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.16: Enhanced Quantity Display - Larger and bolder:
+//         - Increased font size from 11px to 14px
+//         - Made font extra bold (900 weight)
+//         - Added stronger border for definition
+//         - Quantities now more prominent and easier to read
 // v5.4.15: Fixed Quantity Visibility - Better contrast:
 //         - Darker quantity text color for better readability
 //         - Changed from light blue to dark blue/black
@@ -1125,10 +1130,11 @@ hyphens: auto;
 }
 
 .wave-item-qty {
-font-weight: bold;
-color: #1a1a1a;
-font-size: 10px;
+font-weight: 900;
+color: #000000;
+font-size: 13px;
 margin-right: 4px;
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .remove-from-wave {
@@ -2408,15 +2414,17 @@ font-weight: 500;
 }
 
 .wave-item-quantity {
-font-weight: bold;
-color: #1a1a1a;
+font-weight: 900;
+color: #000000;
 margin-right: 4px;
-font-size: 11px;
+font-size: 14px;
 background: #ffffff;
-padding: 2px 5px;
-border-radius: 3px;
+padding: 3px 7px;
+border-radius: 4px;
 display: inline-block;
-border: 1px solid #cccccc;
+border: 2px solid #333333;
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+letter-spacing: 0.5px;
 }
 
 .wave-item-name {
