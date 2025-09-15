@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      5.4.11
+// @version      5.4.12
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v5.4.12: Colorful Category Headers - Better visual distinction:
+//         - Added vibrant gradient colors to category headers
+//         - Each category gets unique color scheme
+//         - Improved visibility and organization
+//         - Categories now pop out for easier identification
 // v5.4.11: Adjusted Overlay Position - Prevent content overlap:
 //         - Reduced overlay width from 40vw to 35vw
 //         - Changed min-width from 1000px to 850px
@@ -2230,12 +2235,65 @@ gap: 6px;
 
 .wave-category-header {
 font-size: 14px;
-font-weight: 600;
-margin: 0 0 6px 0;
-padding: 4px 8px;
-color: #b0b0b0;
-background: rgba(255, 255, 255, 0.05);
-border-radius: 4px;
+font-weight: 700;
+margin: 0 0 8px 0;
+padding: 6px 12px;
+color: #ffffff;
+background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+border-radius: 6px;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Dynamic category colors */
+.wave-category-header[data-category="rice-bowls"] {
+background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.wave-category-header[data-category="dumplings"] {
+background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+}
+
+.wave-category-header[data-category="drinks"] {
+background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.wave-category-header[data-category="grilled"] {
+background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+}
+
+.wave-category-header[data-category="crispy"] {
+background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.wave-category-header[data-category="cauliflower"] {
+background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.wave-category-header[data-category="other"] {
+background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+color: #2c3e50;
+text-shadow: none;
+}
+
+.wave-category-header[data-category="uncategorized"] {
+background: linear-gradient(135deg, #c3cfe2 0%, #c3cfe2 100%);
+color: #2c3e50;
+text-shadow: none;
+}
+
+.wave-category-header[data-category="noodles"] {
+background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+}
+
+.wave-category-header[data-category="sides"] {
+background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
+}
+
+.wave-category-header[data-category="appetizers"] {
+background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
 }
 
 .wave-item-list {
@@ -10841,9 +10899,24 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 return;
               }
               
+              // Determine category type for color coding
+              let categoryType = 'other';
+              const groupLower = proteinGroup.toLowerCase();
+              if (groupLower.includes('rice bowl')) categoryType = 'rice-bowls';
+              else if (groupLower.includes('dumpling')) categoryType = 'dumplings';
+              else if (groupLower.includes('drink')) categoryType = 'drinks';
+              else if (groupLower.includes('grilled')) categoryType = 'grilled';
+              else if (groupLower.includes('crispy')) categoryType = 'crispy';
+              else if (groupLower.includes('cauliflower')) categoryType = 'cauliflower';
+              else if (groupLower.includes('other')) categoryType = 'other';
+              else if (groupLower.includes('uncategorized')) categoryType = 'uncategorized';
+              else if (groupLower.includes('noodle')) categoryType = 'noodles';
+              else if (groupLower.includes('side')) categoryType = 'sides';
+              else if (groupLower.includes('appetizer')) categoryType = 'appetizers';
+
               html += `
                 <div class="wave-category-group">
-                  <h5 class="wave-category-header">${window.escapeHtml(proteinGroup)}</h5>
+                  <h5 class="wave-category-header" data-category="${categoryType}">${window.escapeHtml(proteinGroup)}</h5>
                   <ul class="wave-item-list">
               `;
               
