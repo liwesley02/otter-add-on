@@ -1,8 +1,12 @@
 // ==UserScript==
 // @name         Otter Order Consolidator v4 - Tampermonkey Edition
 // @namespace    http://tampermonkey.net/
-// @version      6.0.1
+// @version      6.0.2
 // @description  Consolidate orders for Otter - Optimized for Firefox Mobile & Tablets
+// v6.0.2: Fixed Steak/Bulgogi categorization:
+//         - Separated "Steak/Bulgogi" into just "Steak" protein category
+//         - Bulgogi is now properly shown as a sauce badge (brown color)
+//         - Detects Bulgogi from item name or modifiers
 // v6.0.1: Fixed Orange Chicken categorization:
 //         - Orange Chicken now correctly grouped under Crispy Chicken
 //         - Orange is a sauce, not a protein type
@@ -3410,6 +3414,10 @@ color: #333; /* Dark text for light background */
 
 .sauce-badge.teriyaki {
 background: #5d4037; /* Dark Brown */
+}
+
+.sauce-badge.bulgogi {
+background: #8b4513; /* Saddle Brown */
 }
 
 .sauce-badge.default {
@@ -10954,8 +10962,9 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                 proteinGroup = 'Crispy Chicken';
               } else if (itemNameLower.includes('grilled chicken') || itemNameLower.includes('grilled chick')) {
                 proteinGroup = 'Grilled Chicken';
-              } else if (itemNameLower.includes('bulgogi') || itemNameLower.includes('steak')) {
-                proteinGroup = 'Steak/Bulgogi';
+              } else if (itemNameLower.includes('steak')) {
+                // Steak is the protein, Bulgogi is a sauce
+                proteinGroup = 'Steak';
               } else if (itemNameLower.includes('salmon')) {
                 proteinGroup = 'Salmon';
               } else if (itemNameLower.includes('shrimp')) {
@@ -11170,13 +11179,20 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                         });
                       }
                       
-                      // Check for sauce badges (Rice Bowls)
-                      if ((item.modifierDetails && item.modifierDetails.sauce) || item.sauceType) {
+                      // Check for sauce badges (Rice Bowls and Urban Bowls)
+                      // Also check if Bulgogi is in the item name itself (for steak items)
+                      if ((item.modifierDetails && item.modifierDetails.sauce) || item.sauceType ||
+                          (item.name && item.name.toLowerCase().includes('bulgogi'))) {
                         const sauceMod = (item.modifierDetails?.sauce || item.sauceType || '').toLowerCase();
+                        const itemNameLower = (item.name || '').toLowerCase();
                         let sauceName = '';
                         let sauceClass = '';
-                        
-                        if (sauceMod.includes('orange')) {
+
+                        // Check if Bulgogi is in the item name itself (for Urban Bowls)
+                        if (itemNameLower.includes('bulgogi') && !sauceMod) {
+                          sauceName = 'Bulgogi';
+                          sauceClass = 'bulgogi';
+                        } else if (sauceMod.includes('orange')) {
                           sauceName = 'Orange';
                           sauceClass = 'orange';
                         } else if (sauceMod.includes('chipotle aioli')) {
@@ -11209,6 +11225,9 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                         } else if (sauceMod.includes('teriyaki')) {
                           sauceName = 'Teriyaki';
                           sauceClass = 'teriyaki';
+                        } else if (sauceMod.includes('bulgogi')) {
+                          sauceName = 'Bulgogi';
+                          sauceClass = 'bulgogi';
                         } else {
                           // Try to extract sauce name
                           const originalSauce = item.modifierDetails?.sauce || item.sauceType || '';
@@ -11349,8 +11368,11 @@ console.log('  - window.__otterIsReactReady() - Check if React is ready');
                             } else if (modName.includes('garlic aioli')) {
                               sauceName = 'Garlic Aioli';
                               sauceClass = 'garlic';
+                            } else if (modName.includes('bulgogi')) {
+                              sauceName = 'Bulgogi';
+                              sauceClass = 'bulgogi';
                             }
-                            
+
                             if (sauceName) {
                               badges += `<span class="sauce-badge ${sauceClass}">${sauceName}</span>`;
                             }
